@@ -1,0 +1,12 @@
+# LightSignal RSS Feeds — Google Alerts
+# One URL per line. Lines starting with # are ignored.
+# Add or remove feeds here without touching any Python scripts.
+
+https://www.google.com/alerts/feeds/03801424635912308889/14281013025318090982
+https://www.google.com/alerts/feeds/03801424635912308889/1133558848116516810
+https://www.google.com/alerts/feeds/03801424635912308889/6086680435089354283
+https://www.google.com/alerts/feeds/03801424635912308889/9772781862089069560
+https://www.google.com/alerts/feeds/03801424635912308889/1133558848116517235
+https://www.google.com/alerts/feeds/03801424635912308889/7135445950673078170
+https://www.google.com/alerts/feeds/03801424635912308889/5013790368728910741
+https://www.google.com/alerts/feeds/03801424635912308889/7870250082475459059

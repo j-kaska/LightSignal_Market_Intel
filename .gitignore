@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.env
+venv/
+.venv/
+
+# LightSignal generated files — do not commit
+data/processed/
+data/archive/
+data/articles/staging/seen_urls.json
+data/articles/staging/duplicate_cache.json
+data/articles/logs/
+output/archive/
+scripts/kml/deckgl_bundle.js
+
+# Keep staging structure but not contents
+!data/articles/staging/.gitkeep
+data/articles/staging/staged_articles.csv
+data/articles/staging/title_cache.json
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+
+# Claude Code IDE settings — local only
+.claude/
+
+# Nested project copy — not part of this repo
+LightSignal_Market_Intel/
+
+# Generated newsletter output
+output/newsletters/

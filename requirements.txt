@@ -1,0 +1,14 @@
+openai
+rapidfuzz
+sentence-transformers
+numpy
+openpyxl
+httpx
+feedparser
+selenium
+beautifulsoup4
+pandas
+requests
+h3
+pywin32
+python-dotenv
