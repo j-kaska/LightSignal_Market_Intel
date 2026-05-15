@@ -34,5 +34,5 @@ desktop.ini
 # Nested project copy — not part of this repo
 LightSignal_Market_Intel/
 
-# Generated newsletter output
-output/newsletters/
+# Newsletter archive (older issues)
+output/newsletters/archive/
