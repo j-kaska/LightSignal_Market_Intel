@@ -40,6 +40,7 @@ FILE_DC                 = INPUTS_DIR / "dc_consolidated.csv"
 FILE_ARTICLES           = INPUTS_DIR / "news_feed.csv"
 FILE_EIA                = INPUTS_DIR / "eia_generators_latest.xlsx"
 FILE_HEX                = INPUTS_DIR / "hex_master_r6.csv"
+FILE_PUSHBACK           = INPUTS_DIR / "dc_pushback.csv"
 
 # ── Processed outputs ─────────────────────────────────────────────────────────
 PROCESSED_DIR           = ROOT / "data" / "processed"
@@ -49,6 +50,8 @@ FILE_PP_POINTS          = PROCESSED_DIR / "power_plants_points.csv"
 FILE_ARTICLES_DC        = PROCESSED_DIR / "articles_dc_linked.csv"
 FILE_ARTICLES_STATE     = PROCESSED_DIR / "articles_state_linked.csv"
 FILE_STATE_CENTROIDS    = PROCESSED_DIR / "state_centroids.csv"
+FILE_PUSHBACK_CLEAN     = PROCESSED_DIR / "dc_pushback_clean.csv"
+FILE_PUSHBACK_H3        = PROCESSED_DIR / "h3_pushback_heatmap.csv"
 
 H3_DIR                  = PROCESSED_DIR / "h3"
 FILE_H3_R3              = H3_DIR / "h3_r3.csv"
@@ -156,6 +159,102 @@ DC_FIELD_STATE          = "state"
 DC_FIELD_POSTAL         = "postal_code"
 DC_FIELD_LAT            = "latitude"
 DC_FIELD_LON            = "longitude"
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# DC PUSHBACK FIELD NAMES  (dc_pushback.csv)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+PUSHBACK_FIELD_DATE              = "date"
+PUSHBACK_FIELD_JURISDICTION      = "jurisdiction"
+PUSHBACK_FIELD_STATE             = "state"
+PUSHBACK_FIELD_COUNTY            = "county"
+PUSHBACK_FIELD_SCOPE             = "scope"
+PUSHBACK_FIELD_ACTION_TYPE       = "action_type"
+PUSHBACK_FIELD_ISSUE_CATEGORY    = "issue_category"
+PUSHBACK_FIELD_OBJECTIVE         = "objective"
+PUSHBACK_FIELD_AUTHORITY_LEVEL   = "authority_level"
+PUSHBACK_FIELD_STATUS            = "status"
+PUSHBACK_FIELD_COMMUNITY_OUTCOME = "community_outcome"
+PUSHBACK_FIELD_DEVELOPMENT_OUTCOME = "development_outcome"
+
+# Canonical action_type labels from dashboard picklist
+PUSHBACK_ACTION_ALL              = "All Actions"
+PUSHBACK_ACTION_ZONING           = "Zoning Restriction"
+PUSHBACK_ACTION_LEGISLATION      = "Legislation"
+PUSHBACK_ACTION_MORATORIUM       = "Moratorium"
+PUSHBACK_ACTION_PUBLIC_COMMENT   = "Public Comment"
+PUSHBACK_ACTION_LAWSUIT          = "Lawsuit"
+PUSHBACK_ACTION_WITHDRAWAL       = "Project Withdrawal"
+PUSHBACK_ACTION_UTILITY_REG      = "Utility Regulation"
+PUSHBACK_ACTION_EXEC_ORDER       = "Executive Order"
+PUSHBACK_ACTION_OTHER            = "Other"
+
+# Canonical issue_category labels from dashboard picklist
+PUSHBACK_ISSUE_ALL                = "All Issues"
+PUSHBACK_ISSUE_ZONING_LAND_USE    = "Zoning / Land Use"
+PUSHBACK_ISSUE_WATER              = "Water"
+PUSHBACK_ISSUE_ENVIRONMENTAL      = "Environmental"
+PUSHBACK_ISSUE_COMMUNITY_IMPACT   = "Community Impact"
+PUSHBACK_ISSUE_GRID_ENERGY        = "Grid / Energy"
+PUSHBACK_ISSUE_TRANSPARENCY       = "Transparency"
+PUSHBACK_ISSUE_RATEPAYER          = "Ratepayer"
+PUSHBACK_ISSUE_NOISE              = "Noise"
+PUSHBACK_ISSUE_TAX_INCENTIVE      = "Tax / Incentive"
+PUSHBACK_ISSUE_FARMLAND           = "Farmland"
+PUSHBACK_ISSUE_TRAFFIC            = "Traffic"
+PUSHBACK_ISSUE_DESIGN_STANDARDS   = "Design Standards"
+PUSHBACK_ISSUE_CONTRACT_GUARANTEE = "Contract Guarantees"
+PUSHBACK_ISSUE_ANTI_AI            = "Anti-AI"
+PUSHBACK_ISSUE_OTHER              = "Other"
+
+# Canonical status labels from dashboard picklist (from development perspective)
+PUSHBACK_STATUS_ALL                    = "All"
+PUSHBACK_STATUS_PENDING                = "Pending"
+PUSHBACK_STATUS_RESOLVED_FAVORABLE     = "Resolved - Favorable for Development"
+PUSHBACK_STATUS_RESOLVED_UNFAVORABLE   = "Resolved - Unfavorable for Development"
+PUSHBACK_STATUS_RESOLVED_MIXED         = "Resolved - Mixed"
+PUSHBACK_OUTCOME_FAVORABLE             = "Favorable for Development"
+PUSHBACK_OUTCOME_UNFAVORABLE           = "Unfavorable for Development"
+PUSHBACK_OUTCOME_MIXED                 = "Mixed"
+PUSHBACK_OUTCOME_PENDING               = "Pending"
+
+# Raw source value -> canonical dashboard label mappings
+PUSHBACK_ACTION_MAP = {
+    "zoning_restriction": PUSHBACK_ACTION_ZONING,
+    "legislation": PUSHBACK_ACTION_LEGISLATION,
+    "moratorium": PUSHBACK_ACTION_MORATORIUM,
+    "public_comment": PUSHBACK_ACTION_PUBLIC_COMMENT,
+    "lawsuit": PUSHBACK_ACTION_LAWSUIT,
+    "litigation": PUSHBACK_ACTION_LAWSUIT,
+    "project_withdrawal": PUSHBACK_ACTION_WITHDRAWAL,
+    "utility_regulation": PUSHBACK_ACTION_UTILITY_REG,
+    "regulatory_action": PUSHBACK_ACTION_UTILITY_REG,
+    "executive_order": PUSHBACK_ACTION_EXEC_ORDER,
+    "ordinance": PUSHBACK_ACTION_LEGISLATION,
+    "infrastructure_opposition": PUSHBACK_ACTION_PUBLIC_COMMENT,
+    "other_opposition": PUSHBACK_ACTION_PUBLIC_COMMENT,
+}
+
+PUSHBACK_ISSUE_MAP = {
+    "zoning": PUSHBACK_ISSUE_ZONING_LAND_USE,
+    "land_use": PUSHBACK_ISSUE_ZONING_LAND_USE,
+    "zoning_land_use": PUSHBACK_ISSUE_ZONING_LAND_USE,
+    "water": PUSHBACK_ISSUE_WATER,
+    "environmental": PUSHBACK_ISSUE_ENVIRONMENTAL,
+    "air_quality": PUSHBACK_ISSUE_ENVIRONMENTAL,
+    "community_impact": PUSHBACK_ISSUE_COMMUNITY_IMPACT,
+    "property_values": PUSHBACK_ISSUE_COMMUNITY_IMPACT,
+    "grid_energy": PUSHBACK_ISSUE_GRID_ENERGY,
+    "transparency": PUSHBACK_ISSUE_TRANSPARENCY,
+    "ratepayer": PUSHBACK_ISSUE_RATEPAYER,
+    "noise": PUSHBACK_ISSUE_NOISE,
+    "tax_incentive": PUSHBACK_ISSUE_TAX_INCENTIVE,
+    "farmland": PUSHBACK_ISSUE_FARMLAND,
+    "traffic": PUSHBACK_ISSUE_TRAFFIC,
+    "design_standards": PUSHBACK_ISSUE_DESIGN_STANDARDS,
+    "contract_guarantees": PUSHBACK_ISSUE_CONTRACT_GUARANTEE,
+    "anti_ai": PUSHBACK_ISSUE_ANTI_AI,
+}
 
 # Status values (after parsing JSON wrapper)
 DC_STATUS_OPERATIONAL       = "Operational"
@@ -447,6 +546,15 @@ PP_STATUS_COLORS = {
     PP_STATUS_OPERATIONAL:  "#27AE60",   # Green (distinct shade from DC)
     PP_STATUS_PLANNED:      "#2980B9",   # Blue  (distinct shade from DC)
 }
+
+# Pushback heatmap color scheme (red shades for intensity)
+PUSHBACK_HEATMAP_COLORS = [
+    "#ffffb2",  # very light yellow
+    "#fecc5c",  # light yellow-orange
+    "#fd8d3c",  # medium orange-red
+    "#f03b20",  # darker red
+    "#bd0026",  # dark red
+]
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # MARKER ICON NAMES

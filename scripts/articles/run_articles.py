@@ -48,6 +48,9 @@ def setup_logging() -> Path:
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M")
     log_path  = ARTICLES_LOG_DIR / f"{timestamp}_articles.log"
 
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
+
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s  [%(levelname)s]  %(message)s",

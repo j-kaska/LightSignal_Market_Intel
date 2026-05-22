@@ -294,6 +294,10 @@ def extract_articles() -> tuple:
 
                 except TimeoutException:
                     log.warning(f"         Timeout — attempt {attempt + 1}")
+                    try:
+                        driver.execute_script("window.stop()")
+                    except Exception:
+                        pass
                     time.sleep(2)
                 except Exception as e:
                     if is_driver_dead(e):

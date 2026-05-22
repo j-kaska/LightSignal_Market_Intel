@@ -24,9 +24,10 @@ ROOT       = SCRIPT_DIR.parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from utils.config import (
-    FILE_DC_POINTS, FILE_PP_POINTS,
+  FILE_DC_POINTS, FILE_PP_POINTS,
     FILE_ARTICLES_DC, FILE_ARTICLES_STATE,
-    H3_FILES, H3_RESOLUTIONS,
+  FILE_PUSHBACK_CLEAN, FILE_STATE_CENTROIDS,
+    H3_FILES, H3_RESOLUTIONS, PUSHBACK_HEATMAP_COLORS,
     OUTPUT_LATEST_DIR,
     H3_COL_ID,
     H3_COL_DC_OPERATIONAL, H3_COL_DC_PIPELINE, H3_COL_DC_TOTAL,
@@ -132,6 +133,146 @@ def _float(v):
         return 0.0 if f != f else f
     except: return 0.0
 
+
+COUNTY_SUFFIXES = (
+    " county",
+    " parish",
+    " borough",
+    " census area",
+    " municipality",
+    " city and borough",
+)
+
+
+def _norm_state(v):
+    s = str(v or "").strip().upper()
+    if len(s) == 2 and s.isalpha():
+        return s
+    return ""
+
+
+def _norm_county(v):
+    c = str(v or "").strip().lower()
+    if not c or c in {"nan", "none", "null"}:
+        return ""
+    c = " ".join(c.replace("\t", " ").split())
+    for suf in COUNTY_SUFFIXES:
+        if c.endswith(suf):
+            c = c[: -len(suf)]
+            break
+    return c.strip()
+
+
+def build_pushback_centroid_lookups():
+    county_points = defaultdict(list)
+
+    for path in [FILE_DC_POINTS, FILE_PP_POINTS]:
+        if not path.exists():
+            continue
+        try:
+            df = pd.read_csv(path, dtype=str)
+        except Exception as e:
+            log.warning(f"  Could not read centroid source {path.name}: {e}")
+            continue
+
+        for _, row in df.iterrows():
+            st = _norm_state(row.get("state", ""))
+            county = _norm_county(row.get("county", ""))
+            lat = _float(row.get("lat"))
+            lon = _float(row.get("lon"))
+            if not st or not county:
+                continue
+            if not (-90 <= lat <= 90 and -180 <= lon <= 180):
+                continue
+            county_points[(st, county)].append((lat, lon))
+
+    county_lookup = {}
+    for key, pts in county_points.items():
+        if not pts:
+            continue
+        lat = sum(p[0] for p in pts) / len(pts)
+        lon = sum(p[1] for p in pts) / len(pts)
+        county_lookup[key] = {"lat": lat, "lon": lon}
+
+    state_lookup = {}
+    if FILE_STATE_CENTROIDS.exists():
+        df = pd.read_csv(FILE_STATE_CENTROIDS, dtype=str)
+        for _, row in df.iterrows():
+            st = _norm_state(row.get("state", ""))
+            lat = _float(row.get("lat"))
+            lon = _float(row.get("lon"))
+            if not st:
+                continue
+            if not (-90 <= lat <= 90 and -180 <= lon <= 180):
+                continue
+            state_lookup[st] = {"lat": lat, "lon": lon}
+
+    log.info(
+        f"  Pushback centroid lookup: {len(county_lookup):,} counties, {len(state_lookup):,} states"
+    )
+    return county_lookup, state_lookup
+
+
+def load_pushback(county_lookup, state_lookup):
+    if not FILE_PUSHBACK_CLEAN.exists():
+        log.warning(f"  Pushback file not found, skipping layer data: {FILE_PUSHBACK_CLEAN}")
+        return []
+
+    df = pd.read_csv(FILE_PUSHBACK_CLEAN, dtype=str, keep_default_na=False)
+    out = []
+    county_hits = 0
+    state_hits = 0
+    unresolved = 0
+
+    for i, row in df.iterrows():
+        st = _norm_state(row.get("state", ""))
+        county_raw = str(row.get("county", "") or "")
+        county = _norm_county(county_raw)
+
+        coord = county_lookup.get((st, county)) if st and county else None
+        geo_resolution = "county_centroid"
+
+        if coord is None and st in state_lookup:
+            coord = state_lookup[st]
+            geo_resolution = "state_centroid"
+
+        if coord is None:
+            unresolved += 1
+            continue
+
+        if geo_resolution == "county_centroid":
+            county_hits += 1
+        else:
+            state_hits += 1
+
+        out.append({
+            "id": f"PB-{i+1:06d}",
+            "date": str(row.get("date", "") or ""),
+            "jurisdiction": str(row.get("jurisdiction", "") or ""),
+            "state": st,
+            "county": county_raw,
+            "scope": str(row.get("scope", "") or ""),
+            "action_type": str(row.get("action_type", "") or ""),
+            "issue_category": str(row.get("issue_category", "") or ""),
+            "status": str(row.get("status", "") or ""),
+            "community_outcome": str(row.get("community_outcome", "") or ""),
+            "development_outcome": str(row.get("development_outcome", row.get("community_outcome", "")) or ""),
+            "objective": str(row.get("objective", "") or ""),
+            "authority_level": str(row.get("authority_level", "") or ""),
+            "project_name": str(row.get("project_name", "") or ""),
+            "company": str(row.get("company", "") or ""),
+            "summary": str(row.get("summary", "") or ""),
+            "lat": float(coord["lat"]),
+            "lon": float(coord["lon"]),
+            "geo_resolution": geo_resolution,
+        })
+
+    log.info(
+        f"  Pushback: {len(out):,} mapped "
+        f"(county centroids={county_hits:,}, state fallback={state_hits:,}, unresolved={unresolved:,})"
+    )
+    return out
+
 def load_dc(articles_by_dc):
     df = pd.read_csv(FILE_DC_POINTS)
     out = []
@@ -225,7 +366,6 @@ def load_articles_full():
 
 def load_articles_all():
     """All articles where Primary_Category is not blank, with scores."""
-    import csv as _csv
     filepath = ROOT / "data" / "raw" / "inputs" / "news_feed.csv"
     if not filepath.exists():
         log.warning(f"  news_feed.csv not found at {filepath}")
@@ -241,37 +381,31 @@ def load_articles_all():
         log.warning("  Could not read news_feed.csv")
         return []
 
-    # Normalize column names
-    df.columns = [c.strip().lstrip("\ufeff").strip('"') for c in df.columns]
-
-    # Filter: Primary_Category not blank
-    if "Primary_Category" in df.columns:
-        df = df[df["Primary_Category"].notna() & (df["Primary_Category"].str.strip() != "")]
-    else:
-        log.warning("  Primary_Category column not found")
-
+    df = df[df["Primary_Category"].fillna("").astype(str).str.strip() != ""].copy()
     out = []
     for _, row in df.iterrows():
-        try:
-            sa = float(row.get("Strategy_Alignment_Score") or 0)
-        except: sa = 0.0
-        try:
-            rs = float(row.get("Relevance_Score") or 0)
-        except: rs = 0.0
-        out.append({
-            "id":       str(row.get("ID","") or ""),
-            "title":    str(row.get("Title","") or ""),
-            "url":      str(row.get("Article_URL","") or ""),
-            "date":     str(row.get("PublishedDate","") or ""),
-            "source":   str(row.get("Source","") or ""),
-            "summary":  str(row.get("Summary_AI","") or row.get("Summary","") or ""),
-            "category": str(row.get("Primary_Category","") or ""),
-            "state":    str(row.get("States","") or ""),
-            "dc_id":    str(row.get("DC_ID","") or ""),
-            "priority": round(sa + rs, 2),
-            "sa_score": round(sa, 2),
-            "rel_score":round(rs, 2),
-        })
+      try:
+        sa = float(row.get("Strategy_Alignment_Score") or 0)
+      except Exception:
+        sa = 0.0
+      try:
+        rs = float(row.get("Relevance_Score") or 0)
+      except Exception:
+        rs = 0.0
+      out.append({
+        "id":       str(row.get("ID","") or ""),
+        "title":    str(row.get("Title","") or ""),
+        "url":      str(row.get("Article_URL", row.get("CleanURL", "")) or ""),
+        "date":     str(row.get("PublishedDate","") or ""),
+        "source":   str(row.get("Source","") or ""),
+        "summary":  str(row.get("Summary_AI","") or row.get("Summary","") or ""),
+        "category": str(row.get("Primary_Category","") or ""),
+        "state":    str(row.get("States","") or ""),
+        "dc_id":    str(row.get("DC_ID","") or ""),
+        "priority": round(sa + rs, 2),
+        "sa_score": round(sa, 2),
+        "rel_score":round(rs, 2),
+      })
 
     # Sort by priority descending
     out.sort(key=lambda x: x["priority"], reverse=True)
@@ -339,6 +473,8 @@ def build_deckgl():
     log.info("  Loading datasets...")
     dc_data   = load_dc(articles_by_dc)
     pp_data   = load_pp()
+    pb_county_lookup, pb_state_lookup = build_pushback_centroid_lookups()
+    pb_data   = load_pushback(pb_county_lookup, pb_state_lookup)
     art_state = load_articles_state()
     art_full  = load_articles_full()
     art_all   = load_articles_all()
@@ -348,11 +484,13 @@ def build_deckgl():
     data_js = (
         f"const DC_DATA={json.dumps(dc_data,separators=(',',':'),default=str)};\n"
         f"const PP_DATA={json.dumps(pp_data,separators=(',',':'),default=str)};\n"
+      f"const PB_DATA={json.dumps(pb_data,separators=(',',':'),default=str)};\n"
         f"const ART_STATE={json.dumps(art_state,separators=(',',':'),default=str)};\n"
         f"const ART_FULL={json.dumps(art_full,separators=(',',':'),default=str)};\n"
         f"const ART_ALL={json.dumps(art_all,separators=(',',':'),default=str)};\n"
         f"const H3_DATA={json.dumps({str(k):v for k,v in h3_data.items()},separators=(',',':'),default=str)};\n"
         "const YLORD_COLORS=[[255,255,255],[224,255,179],[186,242,112],[134,219,72],[78,188,39],[34,153,15],[15,119,6],[5,85,2],[1,50,0]];\n"
+        f"const PUSHBACK_HEATMAP_COLORS={json.dumps(PUSHBACK_HEATMAP_COLORS,separators=(',',':'))};\n"
         f"const ZERO_COLOR={json.dumps(ZERO_RGB,separators=(',',':'))};\n"
         f"const DC_STATUS_RGB_MAP={json.dumps(DC_STATUS_RGB,separators=(',',':'))};\n"
         f"const DC_STATUS_COLORS_MAP={json.dumps(DC_STATUS_COLORS,separators=(',',':'))};\n"
@@ -664,6 +802,28 @@ body{background:#0d0d1a;font-family:'Segoe UI',Arial,sans-serif;color:#eee;overf
         </div>
       </div>
 
+      <!-- Data Center Pushback -->
+      <div style="border-bottom:1px solid #0f0f1f">
+        <div style="display:flex;align-items:center;">
+          <div class="frow" style="padding-left:18px;flex:0 0 auto;">
+            <input type="checkbox" id="chk-pb-all" onchange="togglePBLayer(this.checked)">
+          </div>
+          <button class="lbtn" style="flex:1;padding-left:4px;" onclick="togglePBFilters()" id="btn-pb">
+            <div class="ldot" style="background:#E74C3C"></div>Data Center Pushback
+            <span class="lbtn-expand" id="arr-pb-filters">&#9658;</span>
+          </button>
+        </div>
+        <div class="layer-filters" id="pb-filters" style="display:none">
+          <div class="frow"><input type="checkbox" id="pb-hm" onchange="togglePBHeatmap(this.checked)"><label for="pb-hm">Heatmap</label></div>
+          <div class="fsub-hdr">Action Type</div>
+          <div id="pb-action-checks"></div>
+          <div class="fsub-hdr" style="margin-top:4px">Issue Category</div>
+          <div id="pb-issue-checks"></div>
+          <div class="fsub-hdr" style="margin-top:4px">Status</div>
+          <div id="pb-status-checks"></div>
+        </div>
+      </div>
+
       <!-- News Articles -->
       <div style="display:flex;align-items:center;">
         <div class="frow" style="padding-left:18px;flex:0 0 auto;">
@@ -742,7 +902,7 @@ body{background:#0d0d1a;font-family:'Segoe UI',Arial,sans-serif;color:#eee;overf
 <script src="lib.js"></script>
 <script>
 """ + data_js + r"""
-const {DeckGL,H3HexagonLayer,ScatterplotLayer,TileLayer,BitmapLayer} = deck;
+const {DeckGL,H3HexagonLayer,ScatterplotLayer,HeatmapLayer,TileLayer,BitmapLayer} = deck;
 const TextLayer = deck.TextLayer || null; // graceful fallback
 
 // ── Score builder config ────────────────────────────────────────────
@@ -761,10 +921,13 @@ const PRESETS = {
   growth: { dc_pipe_pct:60,  pp_plan_pct:30, bc_pct:10  },
   clear:  {},
 };
+const PB_ACTIONS = [...new Set(PB_DATA.map(d=>d.action_type).filter(v=>v&&v!=='nan'))].sort();
+const PB_ISSUES = [...new Set(PB_DATA.map(d=>d.issue_category).filter(v=>v&&v!=='nan'))].sort();
+const PB_STATUSES = [...new Set(PB_DATA.map(d=>d.status).filter(v=>v&&v!=='nan'))].sort();
 
 // ── State ──────────────────────────────────────────────────────────
 const S = {
-  showDC:true, showPP:false, showArts:false,
+  showDC:true, showPP:false, showPB:false, showArts:false,
   h3On:true, h3Res:3,
   sbWeights: { dc_total_pct:50, pp_total_pct:30, bc_pct:20 }, // h3On driven by sbWeights
   sbOpen:true, drawerOpen:false, drawerDays:7,
@@ -773,10 +936,15 @@ const S = {
   dcTypes:      new Set(DC_DATA.map(d=>d.company_type).filter(Boolean)),
   ppStatuses:   new Set(['Operational','Planned']),
   ppTechs:      new Set(PP_DATA.map(d=>d.tech_group).filter(Boolean)),
+  pbActions:    new Set(),
+  pbIssues:     new Set(),
+  pbStatuses:   new Set(),
   selStates:    new Set(),
+  pbHeatmapOn:  false,
 };
 
-let fDC=[], fPP=[];
+let fDC=[], fPP=[], fPB=[];
+let currentZoom = 4;
 const CELL_CACHE={};
 
 function fmtMW(mw) {
@@ -803,6 +971,16 @@ function fmtDate(s) {
   if (isNaN(d)) return s.substring(0,10);
   return d.toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'});
 }
+function hexToRgba(hex, alpha) {
+  const raw = String(hex || '').replace('#', '');
+  if(raw.length !== 6) return [189, 0, 38, alpha];
+  return [
+    parseInt(raw.slice(0, 2), 16),
+    parseInt(raw.slice(2, 4), 16),
+    parseInt(raw.slice(4, 6), 16),
+    alpha,
+  ];
+}
 
 // ── Filters ────────────────────────────────────────────────────────
 function applyFilters(){
@@ -817,6 +995,19 @@ function applyFilters(){
     S.ppTechs.has(d.tech_group)&&
     (ss.size===0||ss.has(d.state))
   );
+  const pbFilters =
+    S.pbActions.size < PB_ACTIONS.length ||
+    S.pbIssues.size < PB_ISSUES.length ||
+    S.pbStatuses.size < PB_STATUSES.length;
+  fPB=PB_DATA.filter(d=>{
+    const stateMatch = ss.size===0||ss.has(d.state);
+    if(!stateMatch) return false;
+    if(!pbFilters) return true;
+    const actionMatch = S.pbActions.has(d.action_type);
+    const issueMatch = S.pbIssues.has(d.issue_category);
+    const statusMatch = S.pbStatuses.has(d.status);
+    return actionMatch && issueMatch && statusMatch;
+  });
   updateKPIs(); updateClearBtn();
   render();
   if(S.drawerOpen) renderDrawer();
@@ -878,6 +1069,9 @@ const deckgl=new DeckGL({
   controller:true,
   onHover:onHover,
   onClick:onClick,
+  onViewStateChange:({viewState})=>{
+    currentZoom = (viewState && viewState.zoom) || currentZoom;
+  },
 });
 
 function basemap(){
@@ -936,6 +1130,33 @@ function getLayers(){
     }));
   }
 
+  // Pushback heatmap (point density)
+  if(S.pbHeatmapOn && HeatmapLayer && fPB.length){
+    L.push(new HeatmapLayer({
+      id:'pbheat', data:fPB, pickable:false,
+      getPosition:d=>[d.lon,d.lat],
+      getWeight:()=>1,
+      colorRange:PUSHBACK_HEATMAP_COLORS.map(c=>hexToRgba(c, 220)),
+      radiusPixels:45,
+      intensity:1,
+      threshold:0.02,
+      aggregation:'SUM',
+    }));
+  }
+
+  // Pushback markers (dots)
+  if(S.showPB && fPB.length){
+    L.push(new ScatterplotLayer({
+      id:'pb', data:fPB,
+      getPosition:d=>[d.lon,d.lat],
+      getFillColor:[231,76,60,185],
+      getLineColor:[255,255,255,170],
+      getRadius:3000, radiusUnits:'meters',
+      radiusMinPixels:3, radiusMaxPixels:9,
+      lineWidthMinPixels:1, stroked:true, pickable:true,
+    }));
+  }
+
   // PP markers — color by tech group, sized by MW
   if(S.showPP && fPP.length){
     L.push(new ScatterplotLayer({
@@ -982,6 +1203,7 @@ let pinnedLayer=null, pinnedObject=null;
 function tipContent(object, layerId) {
   if(layerId==='dc')     return dcTip(object);
   if(layerId==='pp')     return ppTip(object);
+  if(layerId==='pb')     return pbTip(object);
   if(layerId==='arts')   return artTip(object);
   if(layerId==='h3base') return h3Tip(object);
   return '';
@@ -1002,7 +1224,7 @@ function onHover({object,layer,x,y}){
 function onClick({object,layer,x,y}){
   if(!object||!layer) return;
   // Pin tooltips for DC, PP, H3 cells, and state article dots
-  const validLayers=['dc','pp','h3base','arts'];
+  const validLayers=['dc','pp','pb','h3base','arts'];
   if(!validLayers.includes(layer.id)) return;
   
   const h=tipContent(object,layer.id);
@@ -1054,6 +1276,16 @@ function ppTip(d){
   `<div class="trow"><span class="tlbl">Nameplate MW</span><span class="tval">${d.mw.toLocaleString(undefined,{maximumFractionDigits:1})} MW</span></div>`+
   `<div class="trow"><span class="tlbl">Location</span><span class="tval">${d.county}, ${d.state}</span></div>`;
 }
+function pbTip(d){
+  const title = d.project_name || d.jurisdiction || 'Pushback Record';
+  let h = `<h4>${title}</h4>`;
+  if(d.status) h += `<span class="tbadge" style="background:#7f1d1d">${d.status}</span> `;
+  if(d.action_type) h += `<span class="tbadge" style="background:#450a0a;border:1px solid #f87171;color:#fecaca">${d.action_type}</span><br/>`;
+  [[d.issue_category,'Issue'],[d.development_outcome||d.community_outcome,'Development Outcome'],[d.authority_level,'Authority'],[d.date,'Date'],[d.county&&d.state?`${d.county}, ${d.state}`:d.state,'Location']]
+    .forEach(([v,l])=>{ if(v&&v!=='nan') h += `<div class="trow"><span class="tlbl">${l}</span><span class="tval">${v}</span></div>`; });
+  if(d.objective) h += `<div class="tarts"><div class="tart">${d.objective.substring(0,220)}${d.objective.length>220?'...':''}</div></div>`;
+  return h;
+}
 function artTip(d){
   let h=`<h4>${d.state} — Regional News</h4><div class="trow"><span class="tlbl">Articles</span><span class="tval">${d.count}</span></div>`;
   if(d.articles && d.articles.length){
@@ -1099,6 +1331,15 @@ function togglePPLayer(on){
   document.getElementById('btn-pp').classList.toggle('active',on);
   if(on) render(); else render();
 }
+function togglePBLayer(on){
+  S.showPB=on;
+  document.getElementById('btn-pb').classList.toggle('active',on);
+  render();
+}
+function togglePBHeatmap(on){
+  S.pbHeatmapOn=on;
+  render();
+}
 function toggleArtsLayer(on){
   S.showArts=on;
   document.getElementById('btn-articles').classList.toggle('active',on);
@@ -1114,6 +1355,13 @@ function toggleDCFilters(){
 function togglePPFilters(){
   const f=document.getElementById('pp-filters');
   const a=document.getElementById('arr-pp-filters');
+  const open=f.style.display!=='none';
+  f.style.display=open?'none':'block';
+  a.classList.toggle('open',!open);
+}
+function togglePBFilters(){
+  const f=document.getElementById('pb-filters');
+  const a=document.getElementById('arr-pb-filters');
   const open=f.style.display!=='none';
   f.style.display=open?'none':'block';
   a.classList.toggle('open',!open);
@@ -1262,6 +1510,42 @@ function buildPPTechChecks(){
 }
 function togglePPTech(tech,on){ on?S.ppTechs.add(tech):S.ppTechs.delete(tech); applyFilters(); }
 function togglePPSt(st,on){ on?S.ppStatuses.add(st):S.ppStatuses.delete(st); applyFilters(); }
+function buildPBActionChecks(){
+  const c=document.getElementById('pb-action-checks');
+  PB_ACTIONS.forEach(action=>{
+    const n=PB_DATA.filter(d=>d.action_type===action).length;
+    const id='pba-'+action.replace(/[^a-z0-9]/gi,'_');
+    S.pbActions.add(action);
+    const div=document.createElement('div'); div.className='frow';
+    div.innerHTML=`<input type="checkbox" id="${id}" checked onchange="togglePBAction('${action.replace(/'/g, "\\'")}',this.checked)"><label for="${id}">${action}</label><span class="fbadge">${n}</span>`;
+    c.appendChild(div);
+  });
+}
+function buildPBIssueChecks(){
+  const c=document.getElementById('pb-issue-checks');
+  PB_ISSUES.forEach(issue=>{
+    const n=PB_DATA.filter(d=>d.issue_category===issue).length;
+    const id='pbi-'+issue.replace(/[^a-z0-9]/gi,'_');
+    S.pbIssues.add(issue);
+    const div=document.createElement('div'); div.className='frow';
+    div.innerHTML=`<input type="checkbox" id="${id}" checked onchange="togglePBIssue('${issue.replace(/'/g, "\\'")}',this.checked)"><label for="${id}">${issue}</label><span class="fbadge">${n}</span>`;
+    c.appendChild(div);
+  });
+}
+function buildPBStatusChecks(){
+  const c=document.getElementById('pb-status-checks');
+  PB_STATUSES.forEach(status=>{
+    const n=PB_DATA.filter(d=>d.status===status).length;
+    const id='pbs-'+status.replace(/[^a-z0-9]/gi,'_');
+    S.pbStatuses.add(status);
+    const div=document.createElement('div'); div.className='frow';
+    div.innerHTML=`<input type="checkbox" id="${id}" checked onchange="togglePBStatus('${status.replace(/'/g, "\\'")}',this.checked)"><label for="${id}">${status}</label><span class="fbadge">${n}</span>`;
+    c.appendChild(div);
+  });
+}
+function togglePBAction(action,on){ on?S.pbActions.add(action):S.pbActions.delete(action); applyFilters(); }
+function togglePBIssue(issue,on){ on?S.pbIssues.add(issue):S.pbIssues.delete(issue); applyFilters(); }
+function togglePBStatus(status,on){ on?S.pbStatuses.add(status):S.pbStatuses.delete(status); applyFilters(); }
 
 // ── State filter ───────────────────────────────────────────────────
 function buildStateList(){
@@ -1310,7 +1594,10 @@ function clearFilters(){
   S.ppStatuses=new Set(['Operational','Planned']);
   S.dcTypes=new Set([...new Set(DC_DATA.map(d=>d.company_type))]);
   S.ppTechs=new Set([...new Set(PP_DATA.map(d=>d.tech_group))]);
-  document.querySelectorAll('#dc-st-checks input,#dc-tp-checks input,#pp-tech-checks input').forEach(cb=>cb.checked=true);
+  S.pbActions=new Set(PB_ACTIONS);
+  S.pbIssues=new Set(PB_ISSUES);
+  S.pbStatuses=new Set(PB_STATUSES);
+  document.querySelectorAll('#dc-st-checks input,#dc-tp-checks input,#pp-tech-checks input,#pb-action-checks input,#pb-issue-checks input,#pb-status-checks input').forEach(cb=>cb.checked=true);
   document.getElementById('pp-op').checked=true;
   document.getElementById('pp-pl').checked=true;
   document.getElementById('chk-dc-all').checked=true;
@@ -1320,7 +1607,13 @@ function clearFilters(){
   deckgl.setProps({initialViewState:{longitude:-98.35,latitude:39.5,zoom:4,transitionDuration:600}});
 }
 function updateClearBtn(){
-  const on=S.selStates.size>0||S.dcStatuses.size<DC_STATUSES.length||S.ppStatuses.size<2;
+  const on=
+    S.selStates.size>0 ||
+    S.dcStatuses.size<DC_STATUSES.length ||
+    S.ppStatuses.size<2 ||
+    S.pbActions.size<PB_ACTIONS.length ||
+    S.pbIssues.size<PB_ISSUES.length ||
+    S.pbStatuses.size<PB_STATUSES.length;
   document.getElementById('btn-clear').style.display=on?'inline-block':'none';
 }
 
@@ -1436,6 +1729,9 @@ window.addEventListener('resize',()=>deckgl.setProps({width:window.innerWidth,he
 buildDCStatusChecks();
 buildDCTypeChecks();
 buildPPTechChecks();
+buildPBActionChecks();
+buildPBIssueChecks();
+buildPBStatusChecks();
 buildStateList();
 buildScoreUI();
 applyFilters();

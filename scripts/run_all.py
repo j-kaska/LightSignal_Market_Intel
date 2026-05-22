@@ -33,7 +33,7 @@ ROOT       = SCRIPT_DIR.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from utils.config import (
-    FILE_DC, FILE_ARTICLES, FILE_EIA, FILE_HEX,
+    FILE_DC, FILE_ARTICLES, FILE_EIA, FILE_HEX, FILE_PUSHBACK,
     ARCHIVE_DIR,
     FILE_KMZ_LATEST,
     KMZ_OUTPUT_FILENAME,
@@ -51,6 +51,7 @@ log = logging.getLogger(__name__)
 # ── Input files to archive ────────────────────────────────────────────────────
 INPUT_FILES = [
     FILE_DC,
+    FILE_PUSHBACK,
     FILE_ARTICLES,
     FILE_EIA,
     FILE_HEX,
@@ -127,12 +128,16 @@ def _prune_archives(archive_dir: Path, retention_days: int) -> None:
 
 def run_transforms():
     from transform.transform_dc            import transform_dc
+    from transform.transform_dc_pushback   import transform_dc_pushback
     from transform.transform_power_plants  import transform_power_plants
     from transform.transform_articles      import transform_articles
     from transform.transform_build_cost    import transform_build_cost
 
     log.info("  Running transform_dc...")
     transform_dc()
+
+    log.info("  Running transform_dc_pushback...")
+    transform_dc_pushback()
 
     log.info("  Running transform_power_plants...")
     transform_power_plants()
@@ -289,6 +294,7 @@ def main():
             log.error("  Place all source files in data/raw/inputs/ and re-run.")
             log.error("  Expected files:")
             log.error("    dc_consolidated.csv")
+            log.error("    dc_pushback.csv")
             log.error("    news_feed.csv")
             log.error("    eia_generators_latest.xlsx")
             log.error("    hex_master_r6.csv")
