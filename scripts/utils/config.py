@@ -106,7 +106,7 @@ API_PROVIDER                = os.environ.get("LIGHTSIGNAL_PROVIDER", "gemini")
 # Gemini 2 Flash: unlimited RPD on paid tier, ~$0.75/month at 150 articles/day.
 # Requires billing enabled in Google AI Studio (free tier caps at 20 RPD — unusable).
 # Set LIGHTSIGNAL_PROVIDER=anthropic to use Claude Haiku instead.
-ARTICLES_MODEL              = "gemini-2.0-flash"
+ARTICLES_MODEL              = "gemini-2.5-flash-lite"
 GEMINI_BASE_URL             = "https://generativelanguage.googleapis.com/v1beta/openai/"
 
 ANTHROPIC_MODEL             = "claude-haiku-4-5-20251001"

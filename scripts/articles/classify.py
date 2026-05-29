@@ -336,7 +336,11 @@ def classify_articles() -> tuple:
     active_provider    = API_PROVIDER
     active_client      = _make_client()
     fallback_triggered = False
-    st_model           = _get_st_model()
+    try:
+        st_model = _get_st_model()
+    except Exception as e:
+        st_model = None
+        log.warning(f"  Semantic dedup unavailable ({type(e).__name__}: {e}); continuing without embedding backstop")
     cache              = load_cache(FILE_DUPLICATE_CACHE)
     existing_ids       = load_existing_news_feed_ids(FILE_NEWS_FEED)
     row_by_id          = {r["article_id"]: r for r in rows}
@@ -362,34 +366,36 @@ def classify_articles() -> tuple:
             continue
 
         # --- Duplicate detection ---
-        embed_text = f"{title} {summary}"
-        try:
-            embedding = st_embed(st_model, embed_text)
-        except Exception as e:
-            log.error(f"         ✗  Embedding error: {e}")
-            failed_count += 1
-            continue
-
         is_dup    = False
         dup_of_id = ""
-        for cached_id, cached in cache.items():
-            if cached_id == article_id:
-                continue  # never flag an article as a duplicate of itself
-            sim = cosine_similarity(embedding, cached["embedding"])
-            if sim >= DUPLICATE_THRESHOLD:
-                is_dup    = True
-                dup_of_id = cached_id
-                log.info(f"         ⚠  DUPLICATE (sim={sim:.3f}) of {cached_id}")
-                log.info(f"         Original: {cached['title'][:60]}")
-                duplicate_count += 1
-                break
 
-        # Add to rolling cache regardless of duplicate status
-        cache[article_id] = {
-            "date"     : datetime.now(timezone.utc).isoformat(),
-            "title"    : title,
-            "embedding": embedding,
-        }
+        if st_model is not None:
+            embed_text = f"{title} {summary}"
+            try:
+                embedding = st_embed(st_model, embed_text)
+            except Exception as e:
+                embedding = None
+                log.warning(f"         Embedding error ({type(e).__name__}: {e}); proceeding without dedup for this article")
+
+            if embedding is not None:
+                for cached_id, cached in cache.items():
+                    if cached_id == article_id:
+                        continue  # never flag an article as a duplicate of itself
+                    sim = cosine_similarity(embedding, cached["embedding"])
+                    if sim >= DUPLICATE_THRESHOLD:
+                        is_dup    = True
+                        dup_of_id = cached_id
+                        log.info(f"         ⚠  DUPLICATE (sim={sim:.3f}) of {cached_id}")
+                        log.info(f"         Original: {cached['title'][:60]}")
+                        duplicate_count += 1
+                        break
+
+                # Add to rolling cache when embedding succeeded
+                cache[article_id] = {
+                    "date"     : datetime.now(timezone.utc).isoformat(),
+                    "title"    : title,
+                    "embedding": embedding,
+                }
 
         if is_dup:
             row_by_id[article_id]["classify_status"] = "success"
