@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:mso="urn:schemas-microsoft-com:office:office" xmlns:msdt="uuid:C2F41010-65B3-11d1-A29F-00AA00C14882">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LightSignal — May 30 – Jun 5, 2026</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #0d0d1a;
+    color: #ddd;
+    font-family: "Segoe UI", Arial, sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  /* ── Header ── */
+  .nl-header {
+    background: linear-gradient(135deg, #0d0d1a 0%, #13132a 60%, #0d0d1a 100%);
+    border-bottom: 1px solid #252540;
+    padding: 0;
+  }
+  .header-inner {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 32px 24px 28px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+  .logo-block {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex: 1;
+  }
+  .logo-text-group {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+  .logo-name {
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    color: #E0FF00;
+    line-height: 1;
+    text-transform: uppercase;
+  }
+  .logo-sub {
+    font-size: 11px;
+    letter-spacing: 2.5px;
+    color: #888;
+    text-transform: uppercase;
+    font-weight: 500;
+  }
+  .header-right {
+    text-align: right;
+  }
+  .date-range {
+    font-size: 15px;
+    font-weight: 600;
+    color: #ccc;
+    letter-spacing: 0.3px;
+  }
+  .date-label {
+    font-size: 10px;
+    color: #555;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-bottom: 2px;
+  }
+
+  /* ── Layout ── */
+  .nl-body {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 40px 24px 60px;
+    display: flex;
+    flex-direction: column;
+    gap: 56px;
+  }
+
+  /* ── Section ── */
+  .nl-section {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .section-header {
+    border-left: 3px solid #E0FF00;
+    padding-left: 14px;
+    margin-bottom: 4px;
+  }
+  .section-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: #E0FF00;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  .section-subtitle {
+    font-size: 11px;
+    color: #555;
+    margin-top: 3px;
+    letter-spacing: 0.3px;
+  }
+
+  /* ── Story Cards ── */
+  .story-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .story-card {
+    background: #161628;
+    border: 1px solid #252540;
+    border-radius: 8px;
+    padding: 18px 20px 14px;
+    transition: border-color 0.15s;
+  }
+  .story-card:hover {
+    border-color: #3a3a5a;
+  }
+  .card-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+  }
+  .rank {
+    font-size: 13px;
+    font-weight: 700;
+    color: #E0FF00;
+    min-width: 28px;
+    flex-shrink: 0;
+  }
+  .card-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    flex-wrap: wrap;
+  }
+  .pub-date {
+    font-size: 11px;
+    color: #555;
+    white-space: nowrap;
+  }
+  .score-pill {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+    background: #1a1a10;
+    border: 1px solid #E0FF0044;
+    border-radius: 20px;
+    padding: 2px 10px;
+    flex-shrink: 0;
+  }
+  .score-label {
+    font-size: 10px;
+    color: #888;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  .score-value {
+    font-size: 14px;
+    font-weight: 700;
+    color: #E0FF00;
+    line-height: 1;
+  }
+  .score-max {
+    font-size: 10px;
+    color: #888;
+    font-weight: 400;
+  }
+  .cat-badge {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.4px;
+    padding: 2px 9px;
+    border-radius: 10px;
+    border: 1px solid transparent;
+    white-space: nowrap;
+    text-transform: uppercase;
+  }
+  .story-title {
+    display: block;
+    font-size: 15px;
+    font-weight: 600;
+    color: #ccc;
+    text-decoration: none;
+    line-height: 1.4;
+    margin-bottom: 8px;
+    transition: color 0.15s;
+  }
+  .story-title:hover {
+    color: #E0FF00;
+  }
+  .story-summary {
+    font-size: 13px;
+    color: #888;
+    line-height: 1.65;
+    margin-bottom: 10px;
+  }
+  .card-footer {
+    display: flex;
+    align-items: center;
+    padding-top: 8px;
+    border-top: 1px solid #1e1e30;
+  }
+  .score-breakdown {
+    font-size: 11px;
+    color: #444;
+    letter-spacing: 0.2px;
+  }
+
+  /* ── DC Mini List ── */
+  .dc-list {
+    background: #0f0f20;
+    border: 1px solid #1e1e35;
+    border-radius: 6px;
+    margin-top: 12px;
+    overflow: hidden;
+  }
+  .dc-row {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    padding: 7px 14px;
+    border-bottom: 1px solid #1a1a30;
+  }
+  .dc-row:last-child {
+    border-bottom: none;
+  }
+  .dc-row::before {
+    content: "⬡";
+    color: #E0FF00;
+    font-size: 10px;
+    flex-shrink: 0;
+    opacity: 0.7;
+  }
+  .dc-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: #bbb;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 260px;
+  }
+  .dc-meta {
+    font-size: 11px;
+    color: #555;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* ── Empty state ── */
+  .empty-notice {
+    color: #444;
+    font-style: italic;
+    padding: 20px 0;
+  }
+
+  /* ── Footer ── */
+  .nl-footer {
+    border-top: 1px solid #1a1a2e;
+    margin-top: 20px;
+  }
+  .footer-inner {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 20px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+  .footer-brand {
+    font-size: 11px;
+    font-weight: 600;
+    color: #E0FF00;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    opacity: 0.6;
+  }
+  .footer-meta {
+    font-size: 10px;
+    color: #333;
+    text-align: right;
+  }
+
+  @media (max-width: 640px) {
+    .header-inner { flex-direction: column; align-items: flex-start; }
+    .header-right { text-align: left; }
+    .dc-row { flex-direction: column; gap: 2px; }
+    .dc-meta { white-space: normal; }
+  }
+</style>
+
+<!--[if gte mso 9]><xml>
+<mso:CustomDocumentProperties>
+<mso:_ApprovalStatus msdt:dt="string">0</mso:_ApprovalStatus>
+<mso:_ApprovalAssignedTo msdt:dt="string"></mso:_ApprovalAssignedTo>
+<mso:_ApprovalRespondedBy msdt:dt="string"></mso:_ApprovalRespondedBy>
+</mso:CustomDocumentProperties>
+</xml><![endif]-->
+</head>
+<body>
+
+<header class="nl-header">
+  <div class="header-inner">
+    <div class="logo-block">
+      <svg width="28" height="32" viewBox="0 0 28 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <polygon points="14,1 26,8 26,24 14,31 2,24 2,8" fill="none" stroke="#E0FF00" stroke-width="2"/>
+      <polygon points="14,7 21,11 21,21 14,25 7,21 7,11" fill="#E0FF00" fill-opacity="0.15" stroke="#E0FF00" stroke-width="1"/>
+    </svg>
+      <div class="logo-text-group">
+        <span class="logo-name">LightSignal</span>
+        <span class="logo-sub">Lightpath Market Intel</span>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="date-label">Week of</div>
+      <div class="date-range">May 30 – Jun 5, 2026</div>
+    </div>
+  </div>
+</header>
+
+<main class="nl-body">
+  
+  <section class="nl-section">
+    <div class="section-header">
+      <h2 class="section-title">Top Data Center Stories</h2>
+      <p class="section-subtitle">DC-tagged stories scoring ≥ 7/10 from the past 7 days</p>
+    </div>
+    <div class="story-list">
+      
+    <div class="story-card">
+      <div class="card-header">
+        <span class="rank">#1</span>
+        <div class="card-meta">
+          <span class="cat-badge" style="background:#1a2a3a;border-color:#3498DB;color:#5dade2">Data Center Development</span>
+          <span class="pub-date">Jun 1, 2026</span>
+        </div>
+        <div class="score-pill">
+          <span class="score-label">Score</span>
+          <span class="score-value">10<span class="score-max">/10</span></span>
+        </div>
+      </div>
+      <a href="https://www.cnbc.com/2026/06/01/stargate-project-michigan-live-updates.html" target="_blank" rel="noopener" class="story-title">Stargate live updates: Developer suggests China is behind paid protesters opposing data centers</a>
+      <p class="story-summary">OpenAI and Oracle's $16 billion Stargate data center campus in Saline Township, Michigan, has broken ground, with Oracle expecting internal data center components alone to cost $30 billion to $40 billion more. Related Digital, the developer, suggested China may be behind protests opposing the data center construction. The project is part of a larger $500 billion pledge by OpenAI, Oracle, and SoftBank to build AI infrastructure in the U.S. over four years.</p>
+      <div class="card-footer">
+        <span class="score-breakdown">Strategy: 5/5 &nbsp;&middot;&nbsp; Relevance: 5/5</span>
+      </div>
+      <div class="dc-list"><div class="dc-row"><span class="dc-name">Related Digital "The Barn"</span><span class="dc-meta">Related Digital &middot; Saline, MI &middot; —</span></div></div>
+    </div>
+    <div class="story-card">
+      <div class="card-header">
+        <span class="rank">#2</span>
+        <div class="card-meta">
+          <span class="cat-badge" style="background:#1a2a3a;border-color:#3498DB;color:#5dade2">Data Center Development</span>
+          <span class="pub-date">Jun 1, 2026</span>
+        </div>
+        <div class="score-pill">
+          <span class="score-label">Score</span>
+          <span class="score-value">9<span class="score-max">/10</span></span>
+        </div>
+      </div>
+      <a href="https://spectrumlocalnews.com/nys/buffalo/news/2026/06/01/public-hearing-set-on-proposed-data-center-at-former-tonawanda-coke-plant" target="_blank" rel="noopener" class="story-title">Public hearing set on proposed data center at former Tonawanda Coke Plant - Spectrum News</a>
+      <p class="story-summary">The Town of Tonawanda Planning Board will review a proposal for the Riverview Innovation and Technology Campus, a 300-megawatt, 500,000-square-foot data center. The project aims to redevelop the former Tonawanda Coke plant property, with construction potentially beginning later this year and concluding by the end of 2027. The unnamed data center developer's investment could reach up to $2 billion.</p>
+      <div class="card-footer">
+        <span class="score-breakdown">Strategy: 4/5 &nbsp;&middot;&nbsp; Relevance: 5/5</span>
+      </div>
+      <div class="dc-list"><div class="dc-row"><span class="dc-name">Riverview Tech Campus</span><span class="dc-meta">Unknown Operator &middot; Tonawanda, NY &middot; 239 MW</span></div></div>
+    </div>
+    <div class="story-card">
+      <div class="card-header">
+        <span class="rank">#3</span>
+        <div class="card-meta">
+          <span class="cat-badge" style="background:#1a2a3a;border-color:#3498DB;color:#5dade2">Data Center Development</span>
+          <span class="pub-date">Jun 3, 2026</span>
+        </div>
+        <div class="score-pill">
+          <span class="score-label">Score</span>
+          <span class="score-value">9<span class="score-max">/10</span></span>
+        </div>
+      </div>
+      <a href="https://www.datacenterdynamics.com/en/news/amazon-plans-nine-building-data-center-campus-in-wheatfield-indiana/" target="_blank" rel="noopener" class="story-title">Amazon plans nine-building data center campus in Wheatfield, Indiana - DCD</a>
+      <p class="story-summary">Amazon Web Services (AWS) plans to develop a nine-building data center campus on a 304-acre site in Wheatfield, Indiana, with an estimated investment of $7 billion. The project aims to leverage proximity to the NIPSCO Schahfer Generating Station to reduce infrastructure costs and is expected to significantly increase tax revenue for Jasper County. AWS is also developing other data centers in Indiana as part of a $15 billion commitment to add 2.4GW of capacity to the state. Separately, AWS purchased 10.61 acres in Ambernath, Mumbai, for approximately $13 million for data center development.</p>
+      <div class="card-footer">
+        <span class="score-breakdown">Strategy: 5/5 &nbsp;&middot;&nbsp; Relevance: 4/5</span>
+      </div>
+      <div class="dc-list"><div class="dc-row"><span class="dc-name">AWS - Wheatfield</span><span class="dc-meta">AWS &middot; Kankakee Township, IN &middot; 520 MW</span></div></div>
+    </div>
+    <div class="story-card">
+      <div class="card-header">
+        <span class="rank">#4</span>
+        <div class="card-meta">
+          <span class="cat-badge" style="background:#1a2a3a;border-color:#3498DB;color:#5dade2">Data Center Development</span>
+          <span class="pub-date">Jun 5, 2026</span>
+        </div>
+        <div class="score-pill">
+          <span class="score-label">Score</span>
+          <span class="score-value">8<span class="score-max">/10</span></span>
+        </div>
+      </div>
+      <a href="https://www.wxyz.com/news/data-centers/data-center-site-plan-denied-in-allen-park-after-voting-was-postponed-three-times" target="_blank" rel="noopener" class="story-title">Data center site plan denied in Allen Park after voting was postponed three times - WXYZ</a>
+      <p class="story-summary">The Allen Park Planning Commission denied a proposed site plan for a 26-megawatt data center from developer Solstice Data. The commission had postponed voting three times while seeking additional engineering, water usage, and sound studies. Residents cited concerns regarding environmental and public health impacts as reasons for opposition.</p>
+      <div class="card-footer">
+        <span class="score-breakdown">Strategy: 4/5 &nbsp;&middot;&nbsp; Relevance: 4/5</span>
+      </div>
+      <div class="dc-list"><div class="dc-row"><span class="dc-name">Solstice Data: Allen Park</span><span class="dc-meta">Solstice Data &middot; Allen Park, MI &middot; 26 MW</span></div></div>
+    </div>
+    <div class="story-card">
+      <div class="card-header">
+        <span class="rank">#5</span>
+        <div class="card-meta">
+          <span class="cat-badge" style="background:#1a2a3a;border-color:#3498DB;color:#5dade2">Data Center Development</span>
+          <span class="pub-date">Jun 2, 2026</span>
+        </div>
+        <div class="score-pill">
+          <span class="score-label">Score</span>
+          <span class="score-value">8<span class="score-max">/10</span></span>
+        </div>
+      </div>
+      <a href="https://openai.com/index/stargate-michigan-data-center/" target="_blank" rel="noopener" class="story-title">Building the infrastructure for the Intelligence Age in Michigan | OpenAI</a>
+      <p class="story-summary">OpenAI has broken ground on "The Barn," a 1GW data center campus in Saline, Michigan. The project, developed in partnership with Oracle, Related Digital, and Walbridge, will create over 2,500 union construction jobs and 450 permanent onsite jobs. OpenAI is also contributing $10 million towards community improvements in Saline, alongside other partners.</p>
+      <div class="card-footer">
+        <span class="score-breakdown">Strategy: 4/5 &nbsp;&middot;&nbsp; Relevance: 4/5</span>
+      </div>
+      <div class="dc-list"><div class="dc-row"><span class="dc-name">Related Digital "The Barn"</span><span class="dc-meta">Related Digital &middot; Saline, MI &middot; —</span></div></div>
+    </div>
+    <div class="story-card">
+      <div class="card-header">
+        <span class="rank">#6</span>
+        <div class="card-meta">
+          <span class="cat-badge" style="background:#1a2a3a;border-color:#3498DB;color:#5dade2">Data Center Development</span>
+          <span class="pub-date">Jun 3, 2026</span>
+        </div>
+        <div class="score-pill">
+          <span class="score-label">Score</span>
+          <span class="score-value">8<span class="score-max">/10</span></span>
+        </div>
+      </div>
+      <a href="https://www.conchovalleyhomepage.com/news/local-news/concho-valley-data-centers/developer-sheds-light-on-dove-creek-data-center-as-commissioners-mull-options/" target="_blank" rel="noopener" class="story-title">Developer sheds light on Dove Creek data center as commissioners mull options</a>
+      <p class="story-summary">Beacon Data Centers presented plans for its proposed "Westline Site" data center campus in Dove Creek, Texas, to the Tom Green County Commissioners' Court. The project is in early planning stages on an estimated 1,240-acre site and includes plans for a closed-loop cooling system. The Commissioners' Court ultimately decided not to pursue a temporary moratorium on data center development in the area.</p>
+      <div class="card-footer">
+        <span class="score-breakdown">Strategy: 4/5 &nbsp;&middot;&nbsp; Relevance: 4/5</span>
+      </div>
+      <div class="dc-list"><div class="dc-row"><span class="dc-name">Westline Site</span><span class="dc-meta">Beacon Data Centers &middot; San Angelo, TX &middot; —</span></div></div>
+    </div>
+    <div class="story-card">
+      <div class="card-header">
+        <span class="rank">#7</span>
+        <div class="card-meta">
+          <span class="cat-badge" style="background:#1a2a3a;border-color:#3498DB;color:#5dade2">Data Center Development</span>
+          <span class="pub-date">Jun 3, 2026</span>
+        </div>
+        <div class="score-pill">
+          <span class="score-label">Score</span>
+          <span class="score-value">8<span class="score-max">/10</span></span>
+        </div>
+      </div>
+      <a href="nan" target="_blank" rel="noopener" class="story-title">Google grants $250K to Huron River group amid Michigan data center plans - mlive.com</a>
+      <p class="story-summary">Google is planning to build a new 1.5 million-square-foot data center in Van Buren Township, Michigan. As part of its expansion plans, Google has also provided a $250,000 grant to the Huron River Watershed Council.</p>
+      <div class="card-footer">
+        <span class="score-breakdown">Strategy: 4/5 &nbsp;&middot;&nbsp; Relevance: 4/5</span>
+      </div>
+      <div class="dc-list"><div class="dc-row"><span class="dc-name">Project Cannoli</span><span class="dc-meta">Pannattoni &middot; Van Buren Township, MI &middot; —</span></div></div>
+    </div>
+    <div class="story-card">
+      <div class="card-header">
+        <span class="rank">#8</span>
+        <div class="card-meta">
+          <span class="cat-badge" style="background:#1a2a3a;border-color:#3498DB;color:#5dade2">Data Center Development</span>
+          <span class="pub-date">Jun 4, 2026</span>
+        </div>
+        <div class="score-pill">
+          <span class="score-label">Score</span>
+          <span class="score-value">8<span class="score-max">/10</span></span>
+        </div>
+      </div>
+      <a href="https://www.wivb.com/news/local-news/erie-county/tonawanda/tonawanda-ai-data-center-project-delayed-amid-ongoing-debate/" target="_blank" rel="noopener" class="story-title">Tonawanda AI data center project delayed amid ongoing debate - WIVB</a>
+      <p class="story-summary">The proposed $2 billion, 500,000-square-foot AI data center in Tonawanda, NY, developed by Riverview Innovation and Technology Campus, has been delayed. The project faces debate regarding its significant electricity demand of approximately 300 megawatts and potential environmental impacts, leading to calls for a temporary moratorium on data center permits. The developer intends to move forward but is waiting for electricity concerns to be addressed before resuming the site plan review process.</p>
+      <div class="card-footer">
+        <span class="score-breakdown">Strategy: 3/5 &nbsp;&middot;&nbsp; Relevance: 5/5</span>
+      </div>
+      <div class="dc-list"><div class="dc-row"><span class="dc-name">Riverview Tech Campus</span><span class="dc-meta">Unknown Operator &middot; Tonawanda, NY &middot; 239 MW</span></div></div>
+    </div>
+    <div class="story-card">
+      <div class="card-header">
+        <span class="rank">#9</span>
+        <div class="card-meta">
+          <span class="cat-badge" style="background:#1a2a3a;border-color:#3498DB;color:#5dade2">Data Center Development</span>
+          <span class="pub-date">Jun 1, 2026</span>
+        </div>
+        <div class="score-pill">
+          <span class="score-label">Score</span>
+          <span class="score-value">7<span class="score-max">/10</span></span>
+        </div>
+      </div>
+      <a href="nan" target="_blank" rel="noopener" class="story-title">Just before moratorium, two last Ohio data centers get a $42 million tax break</a>
+      <p class="story-summary">Cologix Inc. received a $42 million tax break from the state of Ohio for its planned data center developments in Delaware and Licking counties. The exemption was granted just before a statewide moratorium on such tax breaks for data centers took effect. This subsidy supports Cologix's expansion of its data center footprint in Ohio.</p>
+      <div class="card-footer">
+        <span class="score-breakdown">Strategy: 3/5 &nbsp;&middot;&nbsp; Relevance: 4/5</span>
+      </div>
+      <div class="dc-list"><div class="dc-row"><span class="dc-name">COL 5 (Cologix)</span><span class="dc-meta">Cologix &middot; Lewis Center, OH &middot; 25 MW</span></div></div>
+    </div>
+    <div class="story-card">
+      <div class="card-header">
+        <span class="rank">#10</span>
+        <div class="card-meta">
+          <span class="cat-badge" style="background:#1a2a3a;border-color:#3498DB;color:#5dade2">Data Center Development</span>
+          <span class="pub-date">Jun 2, 2026</span>
+        </div>
+        <div class="score-pill">
+          <span class="score-label">Score</span>
+          <span class="score-value">7<span class="score-max">/10</span></span>
+        </div>
+      </div>
+      <a href="https://www.wsaz.com/2026/06/02/neighbors-ask-questions-address-concerns-data-center-town-hall/" target="_blank" rel="noopener" class="story-title">Neighbors ask questions and address concerns in data center town hall - WSAZ</a>
+      <p class="story-summary">TeraWulf plans to acquire nearly 300 acres in Boyd and Greenup counties, Kentucky, for a proposed data center campus called Muskie Data Campus. Residents expressed concerns about pollution, noise, and utility strain at a town hall, while county leaders cited potential job creation and investment, noting a closed-loop water system and planned on-site power upgrades by TeraWulf. The first phase of the project is expected to be completed by 2028, with full power by 2030.</p>
+      <div class="card-footer">
+        <span class="score-breakdown">Strategy: 3/5 &nbsp;&middot;&nbsp; Relevance: 4/5</span>
+      </div>
+      <div class="dc-list"><div class="dc-row"><span class="dc-name">Muskie Data Campus</span><span class="dc-meta">TeraWulf &middot; Ashland, KY &middot; —</span></div></div>
+    </div>
+    </div>
+  </section>
+  
+  <section class="nl-section">
+    <div class="section-header">
+      <h2 class="section-title">All Other Stories</h2>
+      <p class="section-subtitle">Remaining stories scoring ≥ 7/10 this week, excluding those shown above</p>
+    </div>
+    <div class="story-list">
+      
+    <div class="story-card">
+      <div class="card-header">
+        <span class="rank">#1</span>
+        <div class="card-meta">
+          <span class="cat-badge" style="background:#2e1a1a;border-color:#E74C3C;color:#e74c3c">Power & Utilities</span>
+          <span class="pub-date">Jun 1, 2026</span>
+        </div>
+        <div class="score-pill">
+          <span class="score-label">Score</span>
+          <span class="score-value">9<span class="score-max">/10</span></span>
+        </div>
+      </div>
+      <a href="https://www.utilitydive.com/news/pjm-market-monitor-mara-data-center-long-ridge/821574/" target="_blank" rel="noopener" class="story-title">PJM monitor urges FERC to condition Mara power plant buy for data center complex</a>
+      <p class="story-summary">The PJM Interconnection's market monitor is urging FERC to condition the $1.5 billion sale of the 522-MW Long Ridge power plant in Hannibal, Ohio, to Mara Holdings. The monitor recommended that the deal not be approved unless Mara commits to keeping the plant's output within the PJM markets, citing concerns about capacity shortages exacerbated by data center load growth. Mara plans to use the site for a data center complex with over 1 GW of potential power capacity and 600 MW of data center load.</p>
+      <div class="card-footer">
+        <span class="score-breakdown">Strategy: 4/5 &nbsp;&middot;&nbsp; Relevance: 5/5</span>
+      </div>
+      
+    </div>
+    <div class="story-card">
+      <div class="card-header">
+        <span class="rank">#2</span>
+        <div class="card-meta">
+          <span class="cat-badge" style="background:#2e2010;border-color:#E67E22;color:#e67e22">Regulatory & Community Pushback</span>
+          <span class="pub-date">Jun 2, 2026</span>
+        </div>
+        <div class="score-pill">
+          <span class="score-label">Score</span>
+          <span class="score-value">9<span class="score-max">/10</span></span>
+        </div>
+      </div>
+      <a href="https://spectrumnews1.com/oh/toledo/sports/2026/06/02/grove-city-data-center" target="_blank" rel="noopener" class="story-title">Grove City imposes 12-month moratorium on data centers - Spectrum News</a>
+      <p class="story-summary">Grove City City Council has imposed a 12-month moratorium on new data center developments following community concerns. The council voted 6-1 to pause projects while they gather more information on environmental and community impacts. This decision mirrors similar moratoriums enacted in two neighboring townships.</p>
+      <div class="card-footer">
+        <span class="score-breakdown">Strategy: 4/5 &nbsp;&middot;&nbsp; Relevance: 5/5</span>
+      </div>
+      
+    </div>
+    <div class="story-card">
+      <div class="card-header">
+        <span class="rank">#3</span>
+        <div class="card-meta">
+          <span class="cat-badge" style="background:#2e2010;border-color:#E67E22;color:#e67e22">Regulatory & Community Pushback</span>
+          <span class="pub-date">Jun 2, 2026</span>
+        </div>
+        <div class="score-pill">
+          <span class="score-label">Score</span>
+          <span class="score-value">9<span class="score-max">/10</span></span>
+        </div>
+      </div>
+      <a href="https://www.wtae.com/article/township-without-zoning-seeks-development-freeze-amid-ai-data-center-concerns/71465903" target="_blank" rel="noopener" class="story-title">Township without zoning seeks development freeze amid AI data center concerns - WTAE</a>
+      <p class="story-summary">South Bend Township is implementing a development moratorium to prevent an AI data center from locating within its jurisdiction. The township lacks zoning ordinances, making it vulnerable to such developments, and residents are concerned about noise, water, and electricity usage. A parcel owned by Synnex Gas is reportedly being considered by a Florida-based AI data center developer.</p>
+      <div class="card-footer">
+        <span class="score-breakdown">Strategy: 4/5 &nbsp;&middot;&nbsp; Relevance: 5/5</span>
+      </div>
+      
+    </div>
+    <div class="story-card">
+      <div class="card-header">
+        <span class="rank">#4</span>
+        <div class="card-meta">
+          <span class="cat-badge" style="background:#2e2010;border-color:#E67E22;color:#e67e22">Regulatory & Community Pushback</span>
+          <span class="pub-date">Jun 5, 2026</span>
+        </div>
+        <div class="score-pill">
+          <span class="score-label">Score</span>
+          <span class="score-value">9<span class="score-max">/10</span></span>
+        </div>
+      </div>
+      <a href="https://spectrumlocalnews.com/nys/central-ny/politics/2026/06/05/data-center-moratorium-approved-" target="_blank" rel="noopener" class="story-title">State legislature up against clock as 1-year data center moratorium moves forward - Spectrum News</a>
+      <p class="story-summary">New York State lawmakers have passed a one-year moratorium on new data center construction as part of an omnibus package to regulate the sector. This pause is intended to allow the state to gather data and craft regulations concerning water and energy usage. The bill awaits Governor Kathy Hochul's signature to become law, and faces opposition from some business and construction groups concerned about economic impacts.</p>
+      <div class="card-footer">
+        <span class="score-breakdown">Strategy: 4/5 &nbsp;&middot;&nbsp; Relevance: 5/5</span>
+      </div>
+      
+    </div>
+    <div class="story-card">
+      <div class="card-header">
+        <span class="rank">#5</span>
+        <div class="card-meta">
+          <span class="cat-badge" style="background:#2e2010;border-color:#E67E22;color:#e67e22">Regulatory & Community Pushback</span>
+          <span class="pub-date">Jun 3, 2026</span>
+        </div>
+        <div class="score-pill">
+          <span class="score-label">Score</span>
+          <span class="score-value">9<span class="score-max">/10</span></span>
+        </div>
+      </div>
+      <a href="nan" target="_blank" rel="noopener" class="story-title">Moratorium on Data Centers Nears Passage as N.Y. Lawmakers Wind Down</a>
+      <p class="story-summary">New York State lawmakers are considering a moratorium on new data center construction as the legislative session nears its end. The proposed legislation aims to address concerns surrounding the rapid growth of data centers within the state. The potential moratorium could impact future development plans for data center operators in New York.</p>
+      <div class="card-footer">
+        <span class="score-breakdown">Strategy: 4/5 &nbsp;&middot;&nbsp; Relevance: 5/5</span>
+      </div>
+      
+    </div>
+    <div class="story-card">
+      <div class="card-header">
+        <span class="rank">#6</span>
+        <div class="card-meta">
+          <span class="cat-badge" style="background:#1a2e2a;border-color:#1ABC9C;color:#1abc9c">Fiber & Network Infrastructure</span>
+          <span class="pub-date">Jun 1, 2026</span>
+        </div>
+        <div class="score-pill">
+          <span class="score-label">Score</span>
+          <span class="score-value">8<span class="score-max">/10</span></span>
+        </div>
+      </div>
+      <a href="https://www.lightreading.com/ai-machine-learning/ai-is-going-to-transform-our-networks" target="_blank" rel="noopener" class="story-title">AI is going to transform our networks - Light Reading</a>
+      <p class="story-summary">AI inference traffic will significantly alter network demands, with projections indicating it will constitute one-quarter of network traffic by 2035. This new traffic type requires longer durations, greater upstream capacity, and operates at software speeds, unlike current networks optimized for human-paced streams. Hyperscalers are expected to dominate AI infrastructure, necessitating telecom providers to build WAN and long-haul infrastructure in relation to these massive systems, similar to their growing role in subsea capacity.</p>
+      <div class="card-footer">
+        <span class="score-breakdown">Strategy: 4/5 &nbsp;&middot;&nbsp; Relevance: 4/5</span>
+      </div>
+      
+    </div>
+    <div class="story-card">
+      <div class="card-header">
+        <span class="rank">#7</span>
+        <div class="card-meta">
+          <span class="cat-badge" style="background:#1a2a3a;border-color:#3498DB;color:#5dade2">Data Center Development</span>
+          <span class="pub-date">Jun 2, 2026</span>
+        </div>
+        <div class="score-pill">
+          <span class="score-label">Score</span>
+          <span class="score-value">8<span class="score-max">/10</span></span>
+        </div>
+      </div>
+      <a href="https://www.dailyherald.com/20260601/local-politics/after-being-rejected-in-naperville-company-could-build-data-center-in-hoffman-estates/" target="_blank" rel="noopener" class="story-title">After being rejected in Naperville, company could build data center in Hoffman Estates</a>
+      <p class="story-summary">A company previously rejected in Naperville is now seeking to rezone a 186-acre Plum Farms property in Hoffman Estates, Illinois. The owner, operating as H.E. Holdings LLC and previously known as Karis Critical, is requesting a rezoning to manufacturing for a potential third data center campus in the village. This proposal has encountered opposition from residents of neighboring Barrington Hills concerned about the site's proximity to residential areas.</p>
+      <div class="card-footer">
+        <span class="score-breakdown">Strategy: 4/5 &nbsp;&middot;&nbsp; Relevance: 4/5</span>
+      </div>
+      
+    </div>
+    <div class="story-card">
+      <div class="card-header">
+        <span class="rank">#8</span>
+        <div class="card-meta">
+          <span class="cat-badge" style="background:#2e1a1a;border-color:#E74C3C;color:#e74c3c">Power & Utilities</span>
+          <span class="pub-date">Jun 3, 2026</span>
+        </div>
+        <div class="score-pill">
+          <span class="score-label">Score</span>
+          <span class="score-value">8<span class="score-max">/10</span></span>
+        </div>
+      </div>
+      <a href="https://www.datacenterknowledge.com/build-design/google-bets-on-virtual-power-plants-to-unlock-data-center-growth" target="_blank" rel="noopener" class="story-title">Google Bets on Virtual Power Plants for Data Center Growth</a>
+      <p class="story-summary">Google has partnered with Voltus on a three-year agreement to secure up to 100 MW of capacity from distributed energy resources in the PJM Interconnection region. This "Bring Your Own Capacity" (BYOC) model aggregates batteries and other DERs to address data center power needs amid grid congestion. The deal represents a new procurement strategy for hyperscalers, focusing on capacity rather than traditional energy sourcing to support growth.</p>
+      <div class="card-footer">
+        <span class="score-breakdown">Strategy: 3/5 &nbsp;&middot;&nbsp; Relevance: 5/5</span>
+      </div>
+      
+    </div>
+    <div class="story-card">
+      <div class="card-header">
+        <span class="rank">#9</span>
+        <div class="card-meta">
+          <span class="cat-badge" style="background:#2e2010;border-color:#E67E22;color:#e67e22">Regulatory & Community Pushback</span>
+          <span class="pub-date">Jun 4, 2026</span>
+        </div>
+        <div class="score-pill">
+          <span class="score-label">Score</span>
+          <span class="score-value">8<span class="score-max">/10</span></span>
+        </div>
+      </div>
+      <a href="nan" target="_blank" rel="noopener" class="story-title">Major tech companies testify at Ohio Statehouse as farmers push back on data center boom</a>
+      <p class="story-summary">Tech companies are testifying at the Ohio Statehouse amidst local opposition to data center development. A Jackson County family reportedly refused a $3.2 million offer from a data center firm for their land. This highlights the growing tension between data center expansion and rural land use concerns in Ohio.</p>
+      <div class="card-footer">
+        <span class="score-breakdown">Strategy: 3/5 &nbsp;&middot;&nbsp; Relevance: 5/5</span>
+      </div>
+      
+    </div>
+    <div class="story-card">
+      <div class="card-header">
+        <span class="rank">#10</span>
+        <div class="card-meta">
+          <span class="cat-badge" style="background:#1a2a3a;border-color:#3498DB;color:#5dade2">Data Center Development</span>
+          <span class="pub-date">Jun 4, 2026</span>
+        </div>
+        <div class="score-pill">
+          <span class="score-label">Score</span>
+          <span class="score-value">8<span class="score-max">/10</span></span>
+        </div>
+      </div>
+      <a href="nan" target="_blank" rel="noopener" class="story-title">Google and Intersect to build first post-acquisition project in Texas | Latitude Media</a>
+      <p class="story-summary">Google is partnering with Intersect to develop a new data center in Texas. This project will include co-located wind, solar, and battery storage, supplemented by on-site gas generation to power the facility. The development marks Google's first project with Intersect since their acquisition.</p>
+      <div class="card-footer">
+        <span class="score-breakdown">Strategy: 4/5 &nbsp;&middot;&nbsp; Relevance: 4/5</span>
+      </div>
+      
+    </div>
+    </div>
+  </section>
+</main>
+
+<footer class="nl-footer">
+  <div class="footer-inner">
+    <span class="footer-brand">LightSignal</span>
+    <span class="footer-meta">Generated June 06, 2026 at 12:10 PM &nbsp;&middot;&nbsp; Lightpath Strategic Intelligence</span>
+  </div>
+</footer>
+
+</body>
+</html>
