@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LightSignal — Jul 12 – Jul 18, 2026</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #0d0d1a;
+    color: #ddd;
+    font-family: "Segoe UI", Arial, sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  /* ── Header ── */
+  .nl-header {
+    background: linear-gradient(135deg, #0d0d1a 0%, #13132a 60%, #0d0d1a 100%);
+    border-bottom: 1px solid #252540;
+    padding: 0;
+  }
+  .header-inner {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 32px 24px 28px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+  .logo-block {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex: 1;
+  }
+  .logo-text-group {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+  .logo-name {
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    color: #E0FF00;
+    line-height: 1;
+    text-transform: uppercase;
+  }
+  .logo-sub {
+    font-size: 11px;
+    letter-spacing: 2.5px;
+    color: #888;
+    text-transform: uppercase;
+    font-weight: 500;
+  }
+  .header-right {
+    text-align: right;
+  }
+  .date-range {
+    font-size: 15px;
+    font-weight: 600;
+    color: #ccc;
+    letter-spacing: 0.3px;
+  }
+  .date-label {
+    font-size: 10px;
+    color: #555;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-bottom: 2px;
+  }
+
+  /* ── Layout ── */
+  .nl-body {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 40px 24px 60px;
+    display: flex;
+    flex-direction: column;
+    gap: 56px;
+  }
+
+  /* ── Section ── */
+  .nl-section {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .section-header {
+    border-left: 3px solid #E0FF00;
+    padding-left: 14px;
+    margin-bottom: 4px;
+  }
+  .section-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: #E0FF00;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  .section-subtitle {
+    font-size: 11px;
+    color: #555;
+    margin-top: 3px;
+    letter-spacing: 0.3px;
+  }
+
+  /* ── Story Cards ── */
+  .story-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .story-card {
+    background: #161628;
+    border: 1px solid #252540;
+    border-radius: 8px;
+    padding: 18px 20px 14px;
+    transition: border-color 0.15s;
+  }
+  .story-card:hover {
+    border-color: #3a3a5a;
+  }
+  .card-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+  }
+  .rank {
+    font-size: 13px;
+    font-weight: 700;
+    color: #E0FF00;
+    min-width: 28px;
+    flex-shrink: 0;
+  }
+  .card-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    flex-wrap: wrap;
+  }
+  .pub-date {
+    font-size: 11px;
+    color: #555;
+    white-space: nowrap;
+  }
+  .score-pill {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+    background: #1a1a10;
+    border: 1px solid #E0FF0044;
+    border-radius: 20px;
+    padding: 2px 10px;
+    flex-shrink: 0;
+  }
+  .score-label {
+    font-size: 10px;
+    color: #888;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  .score-value {
+    font-size: 14px;
+    font-weight: 700;
+    color: #E0FF00;
+    line-height: 1;
+  }
+  .score-max {
+    font-size: 10px;
+    color: #888;
+    font-weight: 400;
+  }
+  .cat-badge {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.4px;
+    padding: 2px 9px;
+    border-radius: 10px;
+    border: 1px solid transparent;
+    white-space: nowrap;
+    text-transform: uppercase;
+  }
+  .story-title {
+    display: block;
+    font-size: 15px;
+    font-weight: 600;
+    color: #ccc;
+    text-decoration: none;
+    line-height: 1.4;
+    margin-bottom: 8px;
+    transition: color 0.15s;
+  }
+  .story-title:hover {
+    color: #E0FF00;
+  }
+  .story-summary {
+    font-size: 13px;
+    color: #888;
+    line-height: 1.65;
+    margin-bottom: 10px;
+  }
+  .card-footer {
+    display: flex;
+    align-items: center;
+    padding-top: 8px;
+    border-top: 1px solid #1e1e30;
+  }
+  .score-breakdown {
+    font-size: 11px;
+    color: #444;
+    letter-spacing: 0.2px;
+  }
+
+  /* ── DC Mini List ── */
+  .dc-list {
+    background: #0f0f20;
+    border: 1px solid #1e1e35;
+    border-radius: 6px;
+    margin-top: 12px;
+    overflow: hidden;
+  }
+  .dc-row {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    padding: 7px 14px;
+    border-bottom: 1px solid #1a1a30;
+  }
+  .dc-row:last-child {
+    border-bottom: none;
+  }
+  .dc-row::before {
+    content: "⬡";
+    color: #E0FF00;
+    font-size: 10px;
+    flex-shrink: 0;
+    opacity: 0.7;
+  }
+  .dc-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: #bbb;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 260px;
+  }
+  .dc-meta {
+    font-size: 11px;
+    color: #555;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* ── Empty state ── */
+  .empty-notice {
+    color: #444;
+    font-style: italic;
+    padding: 20px 0;
+  }
+
+  /* ── Footer ── */
+  .nl-footer {
+    border-top: 1px solid #1a1a2e;
+    margin-top: 20px;
+  }
+  .footer-inner {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 20px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+  .footer-brand {
+    font-size: 11px;
+    font-weight: 600;
+    color: #E0FF00;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    opacity: 0.6;
+  }
+  .footer-meta {
+    font-size: 10px;
+    color: #333;
+    text-align: right;
+  }
+
+  @media (max-width: 640px) {
+    .header-inner { flex-direction: column; align-items: flex-start; }
+    .header-right { text-align: left; }
+    .dc-row { flex-direction: column; gap: 2px; }
+    .dc-meta { white-space: normal; }
+  }
+</style>
+</head>
+<body>
+
+<header class="nl-header">
+  <div class="header-inner">
+    <div class="logo-block">
+      <svg width="28" height="32" viewBox="0 0 28 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <polygon points="14,1 26,8 26,24 14,31 2,24 2,8" fill="none" stroke="#E0FF00" stroke-width="2"/>
+      <polygon points="14,7 21,11 21,21 14,25 7,21 7,11" fill="#E0FF00" fill-opacity="0.15" stroke="#E0FF00" stroke-width="1"/>
+    </svg>
+      <div class="logo-text-group">
+        <span class="logo-name">LightSignal</span>
+        <span class="logo-sub">Lightpath Market Intel</span>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="date-label">Week of</div>
+      <div class="date-range">Jul 12 – Jul 18, 2026</div>
+    </div>
+  </div>
+</header>
+
+<main class="nl-body">
+  
+  <section class="nl-section">
+    <div class="section-header">
+      <h2 class="section-title">Top Data Center Stories</h2>
+      <p class="section-subtitle">DC-tagged stories scoring ≥ 7/10 from the past 7 days</p>
+    </div>
+    <div class="story-list">
+      
+    <div class="story-card">
+      <div class="card-header">
+        <span class="rank">#1</span>
+        <div class="card-meta">
+          <span class="cat-badge" style="background:#1a2a3a;border-color:#3498DB;color:#5dade2">Data Center Development</span>
+          <span class="pub-date">Jul 17, 2026</span>
+        </div>
+        <div class="score-pill">
+          <span class="score-label">Score</span>
+          <span class="score-value">9<span class="score-max">/10</span></span>
+        </div>
+      </div>
+      <a href="https://civicmedia.us/news/2026/07/16/oracle-credit-rating-drops-amid-wisconsin-fight-over-data-center-credit-rules" target="_blank" rel="noopener" class="story-title">Oracle credit rating drops amid Wisconsin fight over data center credit rules - Civic Media</a>
+      <p class="story-summary">S&P Global Ratings downgraded Oracle's credit rating to BBB- due to concerns about its AI infrastructure investments and capital spending. This downgrade impacts Oracle's ability to secure electrical service for its new data center campus in Ozaukee County, Wisconsin, as it falls below the AAA credit rating threshold set by the PSC for We Energies territory. Oracle could be required to post over $100 million annually in collateral for power, and the company has sued the Wisconsin Public Service Commission over these new data center credit rules.</p>
+      <div class="card-footer">
+        <span class="score-breakdown">Strategy: 5/5 &nbsp;&middot;&nbsp; Relevance: 4/5</span>
+      </div>
+      <div class="dc-list"><div class="dc-row"><span class="dc-name">Lighthouse Data Center Campus (OpenAI)</span><span class="dc-meta">Vantage &middot; Port Washington, WI &middot; —</span></div></div>
+    </div>
+    <div class="story-card">
+      <div class="card-header">
+        <span class="rank">#2</span>
+        <div class="card-meta">
+          <span class="cat-badge" style="background:#1a2a3a;border-color:#3498DB;color:#5dade2">Data Center Development</span>
+          <span class="pub-date">Jul 14, 2026</span>
+        </div>
+        <div class="score-pill">
+          <span class="score-label">Score</span>
+          <span class="score-value">9<span class="score-max">/10</span></span>
+        </div>
+      </div>
+      <a href="https://www.thetimes-tribune.com/2026/07/13/developer-sues-jessup-over-breaker-street-sunnyside-road-data-centers/" target="_blank" rel="noopener" class="story-title">Developer sues Jessup over Breaker Street, Sunnyside Road data centers - Scranton Times</a>
+      <p class="story-summary">Developers have filed lawsuits against Jessup, Pennsylvania, seeking to proceed with plans for seven data centers. One project on Sunnyside Road, a 487,000-square-foot facility, faces legal challenges regarding height restrictions. A separate six-building campus on Breaker Street, spanning approximately 210 acres, is also involved in litigation concerning zoning and electrical infrastructure.</p>
+      <div class="card-footer">
+        <span class="score-breakdown">Strategy: 4/5 &nbsp;&middot;&nbsp; Relevance: 5/5</span>
+      </div>
+      <div class="dc-list"><div class="dc-row"><span class="dc-name">Breaker Street Associates LLC (aka Catalyst Commercial Dev?) data center</span><span class="dc-meta">Breaker Street Associates LLC &middot; Jessup, PA &middot; 67 MW</span></div><div class="dc-row"><span class="dc-name">Catalyst Commercial Development LLC</span><span class="dc-meta">nan &middot; Jessup, PA &middot; 30 MW</span></div></div>
+    </div>
+    <div class="story-card">
+      <div class="card-header">
+        <span class="rank">#3</span>
+        <div class="card-meta">
+          <span class="cat-badge" style="background:#1a2a3a;border-color:#3498DB;color:#5dade2">Data Center Development</span>
+          <span class="pub-date">Jul 13, 2026</span>
+        </div>
+        <div class="score-pill">
+          <span class="score-label">Score</span>
+          <span class="score-value">8<span class="score-max">/10</span></span>
+        </div>
+      </div>
+      <a href="https://www.bizjournals.com/kansascity/news/2026/07/13/northpoint-10-thousand-dollar-grants-data-center.html" target="_blank" rel="noopener" class="story-title">NorthPoint Development offers cash to win support for Pennsylvania data center project</a>
+      <p class="story-summary">NorthPoint Development is seeking to gain local support for a proposed data center in Allen Township, Pennsylvania. The company is offering $750,000 in direct payments to the township as part of its efforts to overcome community opposition. The project aims to develop a significant data center campus within the region.</p>
+      <div class="card-footer">
+        <span class="score-breakdown">Strategy: 3/5 &nbsp;&middot;&nbsp; Relevance: 5/5</span>
+      </div>
+      <div class="dc-list"><div class="dc-row"><span class="dc-name">Lehigh Valley East 16 Project</span><span class="dc-meta">Prologis &middot; Northampton, PA &middot; 250 MW</span></div></div>
+    </div>
+    <div class="story-card">
+      <div class="card-header">
+        <span class="rank">#4</span>
+        <div class="card-meta">
+          <span class="cat-badge" style="background:#1a2a3a;border-color:#3498DB;color:#5dade2">Data Center Development</span>
+          <span class="pub-date">Jul 15, 2026</span>
+        </div>
+        <div class="score-pill">
+          <span class="score-label">Score</span>
+          <span class="score-value">8<span class="score-max">/10</span></span>
+        </div>
+      </div>
+      <a href="https://www.crusoe.ai/resources/newsroom/crusoe-and-lancium-announce-1-gigawatt-ai-data-center-campus-in-childress-texas" target="_blank" rel="noopener" class="story-title">Crusoe and Lancium Announce 1.0 Gigawatt AI Data Center Campus in Childress, Texas</a>
+      <p class="story-summary">Crusoe and Lancium are developing a 1.0 GW AI data center campus on a 270-acre site in Childress, Texas, with construction slated to begin in Q3 2026. Lancium will own and manage the site's energy infrastructure, while Crusoe will design, build, and operate the AI data center, mirroring their existing partnership model in Abilene. The project will also involve direct investment in local infrastructure and community services.</p>
+      <div class="card-footer">
+        <span class="score-breakdown">Strategy: 4/5 &nbsp;&middot;&nbsp; Relevance: 4/5</span>
+      </div>
+      <div class="dc-list"><div class="dc-row"><span class="dc-name">Lancium Childress</span><span class="dc-meta">nan &middot; Childress, TX &middot; —</span></div></div>
+    </div>
+    <div class="story-card">
+      <div class="card-header">
+        <span class="rank">#5</span>
+        <div class="card-meta">
+          <span class="cat-badge" style="background:#2e2010;border-color:#E67E22;color:#e67e22">Regulatory & Community Pushback</span>
+          <span class="pub-date">Jul 13, 2026</span>
+        </div>
+        <div class="score-pill">
+          <span class="score-label">Score</span>
+          <span class="score-value">7<span class="score-max">/10</span></span>
+        </div>
+      </div>
+      <a href="https://michiganadvance.com/2026/07/13/michigan-data-centers-the-weekly-download-3-2-2-2/" target="_blank" rel="noopener" class="story-title">Michigan Data Centers: The Weekly Download</a>
+      <p class="story-summary">Coldwater and Girard Township in Michigan are drafting new ordinances for data center development, while Garfield Township is considering a moratorium. A 1.4 GW data center in Saline Township is seeking a 50% property tax reduction, and Dowagiac City Council will hear a presentation from Hyperscale Data, Inc. regarding its expanded facility, which is also facing a noise complaint lawsuit. Local opposition to data centers continues in Mason, Michigan, with a recall effort against the mayor ongoing.</p>
+      <div class="card-footer">
+        <span class="score-breakdown">Strategy: 3/5 &nbsp;&middot;&nbsp; Relevance: 4/5</span>
+      </div>
+      <div class="dc-list"><div class="dc-row"><span class="dc-name">Hyperscale Data, Inc.</span><span class="dc-meta">Hyperscale Data, Inc &middot; Dowagiac, MI &middot; 300 MW</span></div><div class="dc-row"><span class="dc-name">Related Digital "The Barn"</span><span class="dc-meta">Related Digital &middot; Saline, MI &middot; —</span></div></div>
+    </div>
+    <div class="story-card">
+      <div class="card-header">
+        <span class="rank">#6</span>
+        <div class="card-meta">
+          <span class="cat-badge" style="background:#2e2010;border-color:#E67E22;color:#e67e22">Regulatory & Community Pushback</span>
+          <span class="pub-date">Jul 13, 2026</span>
+        </div>
+        <div class="score-pill">
+          <span class="score-label">Score</span>
+          <span class="score-value">7<span class="score-max">/10</span></span>
+        </div>
+      </div>
+      <a href="https://spectrumnews1.com/ky/louisville/news/2026/07/09/kentucky-counties-weigh-data-center-growth-as-moratoriums-spread" target="_blank" rel="noopener" class="story-title">Kentucky counties weigh data center growth as moratoriums spread - Spectrum News</a>
+      <p class="story-summary">Nelson County, Kentucky, enacted a one-year moratorium on data center development amid local concerns, while London, KY, is considering a two-year pause. In contrast, Hawesville, KY, is seeing significant AI infrastructure development, with Anthropic leasing a 750-acre facility planned for approximately 401 MW of critical IT load, phased in by early 2028. Meanwhile, a 150-acre hyperscale data center is under development in Louisville, even as city leaders discuss new regulations.</p>
+      <div class="card-footer">
+        <span class="score-breakdown">Strategy: 4/5 &nbsp;&middot;&nbsp; Relevance: 3/5</span>
+      </div>
+      <div class="dc-list"><div class="dc-row"><span class="dc-name">TeraWulf - Hawesville</span><span class="dc-meta">TeraWulf &middot; Hawesville, KY &middot; 480 MW</span></div></div>
+    </div>
+    <div class="story-card">
+      <div class="card-header">
+        <span class="rank">#7</span>
+        <div class="card-meta">
+          <span class="cat-badge" style="background:#2e2010;border-color:#E67E22;color:#e67e22">Regulatory & Community Pushback</span>
+          <span class="pub-date">Jul 13, 2026</span>
+        </div>
+        <div class="score-pill">
+          <span class="score-label">Score</span>
+          <span class="score-value">7<span class="score-max">/10</span></span>
+        </div>
+      </div>
+      <a href="https://www.eenews.net/articles/lawsuit-15b-wisconsin-data-center-lacks-required-environmental-review/" target="_blank" rel="noopener" class="story-title">Lawsuit: $15B Wisconsin data center lacks required environmental review</a>
+      <p class="story-summary">The Sierra Club has filed a lawsuit in Wisconsin challenging the approval of the $15 billion Lighthouse data center project in Port Washington. The lawsuit alleges that state regulators failed to conduct a required environmental impact statement for the facility, despite evidence of reversed plans due to developer concerns. This action highlights growing public opposition to the resource demands of large-scale data center development.</p>
+      <div class="card-footer">
+        <span class="score-breakdown">Strategy: 3/5 &nbsp;&middot;&nbsp; Relevance: 4/5</span>
+      </div>
+      <div class="dc-list"><div class="dc-row"><span class="dc-name">Stargate Wisconsin Data Center</span><span class="dc-meta">Vantage Data Centers &middot; Wisconsin 53074, nan &middot; 1 MW</span></div></div>
+    </div>
+    <div class="story-card">
+      <div class="card-header">
+        <span class="rank">#8</span>
+        <div class="card-meta">
+          <span class="cat-badge" style="background:#1a2a3a;border-color:#3498DB;color:#5dade2">Data Center Development</span>
+          <span class="pub-date">Jul 13, 2026</span>
+        </div>
+        <div class="score-pill">
+          <span class="score-label">Score</span>
+          <span class="score-value">7<span class="score-max">/10</span></span>
+        </div>
+      </div>
+      <a href="https://www.datacenterdynamics.com/en/news/mara-acquires-1200-acre-texas-site-from-hif-usa-for-up-to-2gw-data-center-campus/" target="_blank" rel="noopener" class="story-title">Mara acquires 1,200-acre Texas site from HIF USA for up to 2GW data center campus - DCD</a>
+      <p class="story-summary">Mara is acquiring a 1,200-acre site in Matagorda County, Texas, from HIF USA for a data center campus development. The site is expected to provide up to 1GW of grid capacity by October 2027 and 2GW by April 2028, supporting high-performance computing and AI workloads. Mara plans to develop the campus in partnership with Starwood Digital Ventures, with construction anticipated to begin this year.</p>
+      <div class="card-footer">
+        <span class="score-breakdown">Strategy: 3/5 &nbsp;&middot;&nbsp; Relevance: 4/5</span>
+      </div>
+      <div class="dc-list"><div class="dc-row"><span class="dc-name">MARA Matagorda Data Center</span><span class="dc-meta">Starwood Digital Ventures &middot; Palacios, TX &middot; —</span></div></div>
+    </div>
+    <div class="story-card">
+      <div class="card-header">
+        <span class="rank">#9</span>
+        <div class="card-meta">
+          <span class="cat-badge" style="background:#2e2010;border-color:#E67E22;color:#e67e22">Regulatory & Community Pushback</span>
+          <span class="pub-date">Jul 14, 2026</span>
+        </div>
+        <div class="score-pill">
+          <span class="score-label">Score</span>
+          <span class="score-value">7<span class="score-max">/10</span></span>
+        </div>
+      </div>
+      <a href="https://www.pa.gov/agencies/dep/newsroom/2026-07-13-dep-to-host-community-meeting-on-proposed-air-quality-permit-for-amazon-data-center-bucks-county" target="_blank" rel="noopener" class="story-title">DEP to Host Community Meeting on Proposed Air Quality Permit for Amazon Data Center in ...</a>
+      <p class="story-summary">Amazon has submitted a plan approval application to the Pennsylvania DEP for 280 natural gas-fired generator engines and three diesel-fired emergency generator engines at its proposed data center in Falls Township, Bucks County. NorthPoint Development is developing the facility, which will use these generators for backup power. The DEP will host a community meeting on July 14, 2026, to discuss the proposed air quality permit for the data center.</p>
+      <div class="card-footer">
+        <span class="score-breakdown">Strategy: 3/5 &nbsp;&middot;&nbsp; Relevance: 4/5</span>
+      </div>
+      <div class="dc-list"><div class="dc-row"><span class="dc-name">Amazon Web Services Keystone Trade Center</span><span class="dc-meta">Amazon &middot; Morrisville, PA &middot; —</span></div></div>
+    </div>
+    <div class="story-card">
+      <div class="card-header">
+        <span class="rank">#10</span>
+        <div class="card-meta">
+          <span class="cat-badge" style="background:#1a2a3a;border-color:#3498DB;color:#5dade2">Data Center Development</span>
+          <span class="pub-date">Jul 14, 2026</span>
+        </div>
+        <div class="score-pill">
+          <span class="score-label">Score</span>
+          <span class="score-value">7<span class="score-max">/10</span></span>
+        </div>
+      </div>
+      <a href="https://www.costar.com/article/1182404232/texas-based-data-center-developer-buys-harrisburg-area-golf-course" target="_blank" rel="noopener" class="story-title">Texas-based data center developer buys Harrisburg-area golf course - CoStar</a>
+      <p class="story-summary">Provident Data Centers acquired the 228.4-acre Dauphin Highlands Golf Course in Harrisburg, Pennsylvania, for $45.6 million. This acquisition indicates a potential expansion of data center development in the Central Pennsylvania region. The company has prior experience in data center development, notably transforming a Dallas mall into a data center facility.</p>
+      <div class="card-footer">
+        <span class="score-breakdown">Strategy: 2/5 &nbsp;&middot;&nbsp; Relevance: 5/5</span>
+      </div>
+      <div class="dc-list"><div class="dc-row"><span class="dc-name">Harrisburg I, LLC/ Provident data center</span><span class="dc-meta">Harrisburg I, LLC( Provident Realty) &middot; Harrisburg, PA &middot; 428 MW</span></div></div>
+    </div>
+    </div>
+  </section>
+  
+  <section class="nl-section">
+    <div class="section-header">
+      <h2 class="section-title">All Other Stories</h2>
+      <p class="section-subtitle">Remaining stories scoring ≥ 7/10 this week, excluding those shown above</p>
+    </div>
+    <div class="story-list">
+      
+    <div class="story-card">
+      <div class="card-header">
+        <span class="rank">#1</span>
+        <div class="card-meta">
+          <span class="cat-badge" style="background:#2e2010;border-color:#E67E22;color:#e67e22">Regulatory & Community Pushback</span>
+          <span class="pub-date">Jul 14, 2026</span>
+        </div>
+        <div class="score-pill">
+          <span class="score-label">Score</span>
+          <span class="score-value">10<span class="score-max">/10</span></span>
+        </div>
+      </div>
+      <a href="https://www.syracuse.com/news/2026/07/new-york-to-impose-nations-first-statewide-data-center-moratorium-hochul-orders.html" target="_blank" rel="noopener" class="story-title">New York to impose nation's first statewide data center moratorium, Hochul orders</a>
+      <p class="story-summary">Governor Kathy Hochul announced New York's first statewide moratorium on hyperscale data center development, pausing new projects for up to a year. This moratorium will allow state agencies to establish new regulations concerning utility costs, environmental impact, and community benefits. Hochul also plans to work with lawmakers to repeal existing sales tax exemptions for data centers, citing concerns about their strain on the electric grid and utility bills.</p>
+      <div class="card-footer">
+        <span class="score-breakdown">Strategy: 5/5 &nbsp;&middot;&nbsp; Relevance: 5/5</span>
+      </div>
+      
+    </div>
+    <div class="story-card">
+      <div class="card-header">
+        <span class="rank">#2</span>
+        <div class="card-meta">
+          <span class="cat-badge" style="background:#2e2010;border-color:#E67E22;color:#e67e22">Regulatory & Community Pushback</span>
+          <span class="pub-date">Jul 15, 2026</span>
+        </div>
+        <div class="score-pill">
+          <span class="score-label">Score</span>
+          <span class="score-value">9<span class="score-max">/10</span></span>
+        </div>
+      </div>
+      <a href="https://www.kwtx.com/2026/07/15/hill-county-dropped-its-data-center-ban-after-100-million-lawsuit-now-developer-has-dismissed-case/" target="_blank" rel="noopener" class="story-title">Hill County dropped its data center ban after a $100 million lawsuit. Now the developer has - KWTX</a>
+      <p class="story-summary">Hill County, Texas, rescinded its one-year moratorium on data center construction after RCM Hill LLC filed a federal lawsuit seeking over $100 million in damages for alleged interference with an $80 million data center development on over 800 acres. The county agreed to pay $100,000 in legal fees to dismiss the lawsuit. In place of the moratorium, Hill County adopted a new review framework requiring developers to submit detailed disclosures on infrastructure and resource impacts.</p>
+      <div class="card-footer">
+        <span class="score-breakdown">Strategy: 5/5 &nbsp;&middot;&nbsp; Relevance: 4/5</span>
+      </div>
+      
+    </div>
+    <div class="story-card">
+      <div class="card-header">
+        <span class="rank">#3</span>
+        <div class="card-meta">
+          <span class="cat-badge" style="background:#1a2a3a;border-color:#3498DB;color:#5dade2">Data Center Development</span>
+          <span class="pub-date">Jul 15, 2026</span>
+        </div>
+        <div class="score-pill">
+          <span class="score-label">Score</span>
+          <span class="score-value">9<span class="score-max">/10</span></span>
+        </div>
+      </div>
+      <a href="https://www.morningstar.com/news/business-wire/20260714890966/acs-group-global-infrastructure-partners-launch-coravel-secure-first-major-hyperscaler-customer-agreement" target="_blank" rel="noopener" class="story-title">ACS Group, Global Infrastructure Partners Launch Coravel, Secure First Major Hyperscaler ...</a>
+      <p class="story-summary">Coravel, a data center joint venture between ACS Group and Global Infrastructure Partners, has launched and secured its first major hyperscaler customer agreement. This agreement covers approximately 140 megawatts of critical IT load across three facilities at Coravel's Dallas-Fort Worth campus, with options for an additional 100 megawatts. The platform aims to simplify the delivery of digital infrastructure by integrating development, construction, and operational capabilities.</p>
+      <div class="card-footer">
+        <span class="score-breakdown">Strategy: 5/5 &nbsp;&middot;&nbsp; Relevance: 4/5</span>
+      </div>
+      
+    </div>
+    <div class="story-card">
+      <div class="card-header">
+        <span class="rank">#4</span>
+        <div class="card-meta">
+          <span class="cat-badge" style="background:#1a2a3a;border-color:#3498DB;color:#5dade2">Data Center Development</span>
+          <span class="pub-date">Jul 13, 2026</span>
+        </div>
+        <div class="score-pill">
+          <span class="score-label">Score</span>
+          <span class="score-value">8<span class="score-max">/10</span></span>
+        </div>
+      </div>
+      <a href="https://www.ir.plugpower.com/press-releases/news-details/2026/Plug-Power-Announces-Sale-of-Graham-Texas-Project-and-Staged-Closing-of-New-York-Gateway-Project-with-Stream-Data-Centers-Expects-80-Million-in-Near-Term-Liquidity-as-Part-of-275-Million-Plus-Initiative/default.aspx" target="_blank" rel="noopener" class="story-title">Plug Power Announces Sale of Graham, Texas Project and Staged Closing of New York ...</a>
+      <p class="story-summary">Plug Power has agreed to sell its Graham, Texas Project, which includes land and 164 MW of grid interconnection assets, to Stream Data Centers for up to $76.5 million. This sale is expected to provide approximately $90.5 million in total liquidity, including the release of $14 million in cash collateral. Additionally, Plug Power and Stream have restructured the sale of the New York Gateway Project, with Stream making a new $10 million escrow deposit and the total purchase price remaining fixed at $142 million.</p>
+      <div class="card-footer">
+        <span class="score-breakdown">Strategy: 4/5 &nbsp;&middot;&nbsp; Relevance: 4/5</span>
+      </div>
+      
+    </div>
+    <div class="story-card">
+      <div class="card-header">
+        <span class="rank">#5</span>
+        <div class="card-meta">
+          <span class="cat-badge" style="background:#2e2010;border-color:#E67E22;color:#e67e22">Regulatory & Community Pushback</span>
+          <span class="pub-date">Jul 13, 2026</span>
+        </div>
+        <div class="score-pill">
+          <span class="score-label">Score</span>
+          <span class="score-value">8<span class="score-max">/10</span></span>
+        </div>
+      </div>
+      <a href="https://pro.stateaffairs.com/pa/news/pennsylvania-data-center-oversight" target="_blank" rel="noopener" class="story-title">Pennsylvania tightens data center oversight in new budget - State Affairs</a>
+      <p class="story-summary">Pennsylvania's new state budget increases oversight of data centers, though a proposed sales tax exemption repeal for the sector was not included. Lawmakers also did not pass legislation that would allow local officials up to 18 months to delay action on new data center applications.</p>
+      <div class="card-footer">
+        <span class="score-breakdown">Strategy: 3/5 &nbsp;&middot;&nbsp; Relevance: 5/5</span>
+      </div>
+      
+    </div>
+    <div class="story-card">
+      <div class="card-header">
+        <span class="rank">#6</span>
+        <div class="card-meta">
+          <span class="cat-badge" style="background:#1a2e2a;border-color:#1ABC9C;color:#1abc9c">Fiber & Network Infrastructure</span>
+          <span class="pub-date">Jul 13, 2026</span>
+        </div>
+        <div class="score-pill">
+          <span class="score-label">Score</span>
+          <span class="score-value">8<span class="score-max">/10</span></span>
+        </div>
+      </div>
+      <a href="https://www.prnewswire.com/news-releases/chesapeake-utilities-corporation-announces-florida-energy-pathway-project-302823037.html" target="_blank" rel="noopener" class="story-title">Chesapeake Utilities Corporation Announces Florida Energy Pathway Project</a>
+      <p class="story-summary">Chesapeake Utilities, through its subsidiary Peninsula Pipeline Company, announced the Florida Energy Pathway (FEP) project, a $1.2 billion, 24-inch natural gas pipeline spanning from Palm Beach County to Miami-Dade County. The FEP project aims to expand natural gas transportation capacity with an estimated 250,000 dekatherms per day and is expected to be in service by 2030. Chesapeake Utilities is exploring partnerships for up to 49% ownership of the project to finance its development.</p>
+      <div class="card-footer">
+        <span class="score-breakdown">Strategy: 3/5 &nbsp;&middot;&nbsp; Relevance: 5/5</span>
+      </div>
+      
+    </div>
+    <div class="story-card">
+      <div class="card-header">
+        <span class="rank">#7</span>
+        <div class="card-meta">
+          <span class="cat-badge" style="background:#2e2010;border-color:#E67E22;color:#e67e22">Regulatory & Community Pushback</span>
+          <span class="pub-date">Jul 15, 2026</span>
+        </div>
+        <div class="score-pill">
+          <span class="score-label">Score</span>
+          <span class="score-value">8<span class="score-max">/10</span></span>
+        </div>
+      </div>
+      <a href="https://www.politico.com/news/2026/07/15/trump-knocks-hochuls-data-center-moratorium-00999538" target="_blank" rel="noopener" class="story-title">Trump knocks Hochul's data center moratorium - POLITICO</a>
+      <p class="story-summary">New York Governor Kathy Hochul signed an executive order pausing new large data center permits for up to 12 months to develop an environmental and regulatory framework. This moratorium allows existing projects and those for healthcare or education to proceed, amidst concerns over energy and water usage. Former President Donald Trump criticized the decision, calling it detrimental to New York's economy and suggesting companies are relocating to states like Alabama, Florida, and Texas.</p>
+      <div class="card-footer">
+        <span class="score-breakdown">Strategy: 3/5 &nbsp;&middot;&nbsp; Relevance: 5/5</span>
+      </div>
+      
+    </div>
+    <div class="story-card">
+      <div class="card-header">
+        <span class="rank">#8</span>
+        <div class="card-meta">
+          <span class="cat-badge" style="background:#2e2010;border-color:#E67E22;color:#e67e22">Regulatory & Community Pushback</span>
+          <span class="pub-date">Jul 14, 2026</span>
+        </div>
+        <div class="score-pill">
+          <span class="score-label">Score</span>
+          <span class="score-value">8<span class="score-max">/10</span></span>
+        </div>
+      </div>
+      <a href="https://broadbandbreakfast.com/pennsylvania-senate-advances-bill-allowing-18-month-data-center-moratoriums/" target="_blank" rel="noopener" class="story-title">Pennsylvania Senate Advances Bill Allowing 18-Month Data Center Moratoriums</a>
+      <p class="story-summary">Pennsylvania's Senate Rules & Executive Nominations Committee has advanced Senate Bill 1345, which would permit municipalities to impose 18-month moratoriums on new data center projects. This legislation aims to allow local authorities time to update zoning regulations in response to the increasing development of data centers. The bill's advancement follows similar moratoriums being considered or approved in other states like New York and Maine.</p>
+      <div class="card-footer">
+        <span class="score-breakdown">Strategy: 3/5 &nbsp;&middot;&nbsp; Relevance: 5/5</span>
+      </div>
+      
+    </div>
+    <div class="story-card">
+      <div class="card-header">
+        <span class="rank">#9</span>
+        <div class="card-meta">
+          <span class="cat-badge" style="background:#2e2010;border-color:#E67E22;color:#e67e22">Regulatory & Community Pushback</span>
+          <span class="pub-date">Jul 15, 2026</span>
+        </div>
+        <div class="score-pill">
+          <span class="score-label">Score</span>
+          <span class="score-value">8<span class="score-max">/10</span></span>
+        </div>
+      </div>
+      <a href="https://www.wgal.com/article/lancaster-city-council-votes-pass-amendment-regulate-data-centers/71937439" target="_blank" rel="noopener" class="story-title">Lancaster City Council votes to pass amendment to regulate data centers - WGAL</a>
+      <p class="story-summary">Lancaster City Council has passed an amendment to its zoning code to regulate future data center development. This amendment clarifies that two previously approved data center projects can continue. The ordinance limits future data center development to 16 specific parcels, requiring special exception and public hearings for any new projects.</p>
+      <div class="card-footer">
+        <span class="score-breakdown">Strategy: 3/5 &nbsp;&middot;&nbsp; Relevance: 5/5</span>
+      </div>
+      
+    </div>
+    <div class="story-card">
+      <div class="card-header">
+        <span class="rank">#10</span>
+        <div class="card-meta">
+          <span class="cat-badge" style="background:#2e1a1a;border-color:#E74C3C;color:#e74c3c">Power & Utilities</span>
+          <span class="pub-date">Jul 15, 2026</span>
+        </div>
+        <div class="score-pill">
+          <span class="score-label">Score</span>
+          <span class="score-value">8<span class="score-max">/10</span></span>
+        </div>
+      </div>
+      <a href="https://www.esgdive.com/news/google-inks-investment-offtake-deal-for-largest-us-solar-project-cypress-creek-arkansas/825318/" target="_blank" rel="noopener" class="story-title">Google inks investment, offtake deal for largest US solar project | ESG Dive</a>
+      <p class="story-summary">Google has signed an anchor investment and power purchase agreement for the Steel River Energy Center in Mississippi County, Arkansas. This project, developed by Cypress Creek Energy, will be the largest solar and storage facility in Google's portfolio to date, with an expected capacity of 2.5 GWdc solar and 2.9 GWh battery storage upon completion in 2029. The project emphasizes domestic sourcing, with solar panels made entirely in the U.S. and structural steel sourced from Mississippi County.</p>
+      <div class="card-footer">
+        <span class="score-breakdown">Strategy: 4/5 &nbsp;&middot;&nbsp; Relevance: 4/5</span>
+      </div>
+      
+    </div>
+    </div>
+  </section>
+</main>
+
+<footer class="nl-footer">
+  <div class="footer-inner">
+    <span class="footer-brand">LightSignal</span>
+    <span class="footer-meta">Generated July 18, 2026 at 09:33 AM &nbsp;&middot;&nbsp; Lightpath Strategic Intelligence</span>
+  </div>
+</footer>
+
+</body>
+</html>

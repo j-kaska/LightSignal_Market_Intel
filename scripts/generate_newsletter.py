@@ -90,8 +90,12 @@ def load_articles(end_date: datetime) -> pd.DataFrame:
     if dup_col in df.columns:
         df = df[df[dup_col].astype(str).str.upper() != "TRUE"].copy()
 
-    # Parse dates
-    df[ART_FIELD_DATE] = pd.to_datetime(df[ART_FIELD_DATE], errors="coerce")
+    # Parse dates. New feeds may mix 24h and AM/PM formats (e.g. 1/26/2026 19:08 and 06/08/2026 05:33 PM).
+    # Use mixed-format parsing when available, with fallback for older pandas.
+    try:
+      df[ART_FIELD_DATE] = pd.to_datetime(df[ART_FIELD_DATE], errors="coerce", format="mixed")
+    except TypeError:
+      df[ART_FIELD_DATE] = pd.to_datetime(df[ART_FIELD_DATE], errors="coerce")
     df = df.dropna(subset=[ART_FIELD_DATE])
 
     # Filter to 7-day window (end_date inclusive, normalized to midnight)
@@ -164,6 +168,10 @@ def parse_dc_ids(raw: str) -> list:
 
 def get_dc_stories(df: pd.DataFrame) -> pd.DataFrame:
     """DC-tagged stories with combined_score >= MIN_SCORE, up to TOP_N, sorted desc."""
+    if df.empty:
+        log.info(f"  DC-linked stories (score >= {MIN_SCORE}): 0")
+        return df.head(0)
+
     dc_mask = df[ART_FIELD_DC_ID].apply(lambda x: len(parse_dc_ids(x)) > 0)
     dc_df   = (df[dc_mask & (df["combined_score"] >= MIN_SCORE)]
                .sort_values("combined_score", ascending=False)
@@ -174,6 +182,10 @@ def get_dc_stories(df: pd.DataFrame) -> pd.DataFrame:
 
 def get_other_stories(df: pd.DataFrame, dc_stories: pd.DataFrame) -> pd.DataFrame:
     """All stories NOT in dc_stories with combined_score >= MIN_SCORE, up to TOP_N, sorted desc."""
+    if df.empty:
+        log.info(f"  Other stories (score >= {MIN_SCORE}, excl. DC section): 0")
+        return df.head(0)
+
     exclude_ids = set(dc_stories[ART_FIELD_ID].astype(str))
     other_df = (df[~df[ART_FIELD_ID].astype(str).isin(exclude_ids) &
                    (df["combined_score"] >= MIN_SCORE)]

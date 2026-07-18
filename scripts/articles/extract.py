@@ -43,19 +43,22 @@ SCRIPT_DIR = Path(__file__).parent
 ROOT       = SCRIPT_DIR.parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from utils.config import FILE_STAGED
+from urllib.parse import urlparse
+
+from utils.config import FILE_STAGED, BLOCKED_SOURCE_DOMAINS
 
 # ── Logging ───────────────────────────────────────────────────────────────────
 log = logging.getLogger(__name__)
 
 # ── Settings ──────────────────────────────────────────────────────────────────
-PAGE_LOAD_TIMEOUT   = 30      # seconds to wait for page load
-TEXT_WAIT_TIMEOUT   = 10      # seconds to wait for body text to appear
-DELAY_BETWEEN       = 1.5     # seconds between articles (be polite)
-MAX_RETRIES         = 1       # retries per article before marking failed
-MAX_CONSECUTIVE_FAILS = 5     # restart browser after this many consecutive failures
+PAGE_LOAD_TIMEOUT   = 15      # seconds to wait for page load (reduced from 30)
+TEXT_WAIT_TIMEOUT   = 8       # seconds to wait for body text to appear (reduced from 10)
+DELAY_BETWEEN       = 2       # seconds between articles (be polite)
+MAX_RETRIES         = 3       # retries per article before marking failed (increased from 1)
+MAX_CONSECUTIVE_FAILS = 3     # restart browser after this many consecutive failures (reduced from 5)
+RESTART_EVERY       = 30      # proactively restart browser every N articles to avoid stale sessions
 MIN_TEXT_LENGTH     = 200     # minimum chars to consider extraction successful
-SAVE_INTERVAL       = 10      # save staging CSV every N articles (crash safety)
+SAVE_INTERVAL       = 5       # save staging CSV every N articles (crash safety, reduced from 10)
 
 # Article content selectors — tried in order, first match wins
 ARTICLE_SELECTORS = [
@@ -91,19 +94,31 @@ def is_driver_dead(exc: Exception) -> bool:
         or "no connection could be made" in msg
         or "max retries exceeded" in msg
         or "failed to establish a new connection" in msg
+        or "invalid session id" in msg
+        or "session deleted because of page crash" in msg
+        or "chrome not reachable" in msg
+        or "disconnected: not connected to devtools" in msg
         or ("connection aborted" in msg and "localhost" in msg)
+        or ("read timed out" in msg and "localhost" in msg)
     )
 
 
 def make_driver() -> webdriver.Chrome:
-    """Create a headless Chrome WebDriver."""
+    """Create a headless Chrome WebDriver with enhanced stability."""
     opts = Options()
     opts.add_argument("--headless=new")
     opts.add_argument("--no-sandbox")
     opts.add_argument("--disable-dev-shm-usage")
     opts.add_argument("--disable-gpu")
-    opts.add_argument("--window-size=1920,1080")
+    opts.add_argument("--window-size=1280,720")  # Reduced from 1920x1080 to save memory
     opts.add_argument("--disable-blink-features=AutomationControlled")
+    opts.add_argument("--disable-web-resources")  # Don't load external resources
+    opts.add_argument("--disable-extensions")
+    opts.add_argument("--disable-plugins")
+    opts.add_argument("--disable-default-apps")
+    opts.add_argument("--disable-java")  # Disable Java
+    opts.add_argument("--disable-component-update")
+    opts.add_argument("--dns-prefetch-disable")  # Reduce DNS lookups
     opts.add_experimental_option("excludeSwitches", ["enable-automation"])
     opts.add_argument(
         "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -114,9 +129,11 @@ def make_driver() -> webdriver.Chrome:
     opts.add_argument("--log-level=3")
     opts.add_experimental_option("prefs", {
         "profile.default_content_setting_values.notifications": 2,
+        "profile.default_content_settings.popups": 0,
     })
     driver = webdriver.Chrome(options=opts)
     driver.set_page_load_timeout(PAGE_LOAD_TIMEOUT)
+    driver.implicitly_wait(5)  # Add implicit wait
     return driver
 
 
@@ -236,6 +253,7 @@ def extract_articles() -> tuple:
     log.info("  Chrome started.")
 
     success_count      = 0
+    filtered_count     = 0
     failed_count       = 0
     consecutive_fails  = 0
 
@@ -261,6 +279,12 @@ def extract_articles() -> tuple:
 
             log.info(f"  [{i:3}/{len(pending)}] {title}")
 
+            # Periodic browser recycle reduces invalid-session errors on long runs.
+            if i > 1 and (i - 1) % RESTART_EVERY == 0:
+                log.info(f"  Browser recycle at item {i - 1} — restarting Chrome")
+                driver = restart_driver(driver)
+                consecutive_fails = 0
+
             # Restart browser if too many consecutive failures
             if consecutive_fails >= MAX_CONSECUTIVE_FAILS:
                 log.warning(f"  {MAX_CONSECUTIVE_FAILS} consecutive failures — restarting browser")
@@ -270,17 +294,43 @@ def extract_articles() -> tuple:
             success = False
             for attempt in range(MAX_RETRIES + 1):
                 try:
-                    driver.get(raw_url)
+                    # Navigate with explicit error handling
+                    try:
+                        driver.get(raw_url)
+                    except TimeoutException:
+                        # Page took too long to load, but we might have partial content
+                        driver.execute_script("window.stop()")
+                        time.sleep(1)
 
-                    # Wait for body to have some content
-                    WebDriverWait(driver, TEXT_WAIT_TIMEOUT).until(
-                        lambda d: len(d.find_element(By.TAG_NAME, "body").text) > 100
-                    )
+                    # Wait for body to have some content, with more lenient check
+                    try:
+                        WebDriverWait(driver, TEXT_WAIT_TIMEOUT).until(
+                            lambda d: len(d.find_element(By.TAG_NAME, "body").text) > 50
+                        )
+                    except TimeoutException:
+                        # Even if page didn't fully load, try to extract what we have
+                        pass
 
-                    clean_url   = driver.current_url
+                    clean_url    = driver.current_url
                     article_text = extract_text(driver)
 
                     if len(article_text) >= MIN_TEXT_LENGTH:
+                        # Domain filter: drop investment/financial publication pages
+                        try:
+                            netloc = urlparse(clean_url).netloc.lower().lstrip("www.")
+                        except Exception:
+                            netloc = ""
+                        if any(blocked in netloc for blocked in BLOCKED_SOURCE_DOMAINS):
+                            log.info(f"         ✗  Filtered domain ({netloc}): {title[:50]}")
+                            row_by_id[article_id]["clean_url"]         = clean_url
+                            row_by_id[article_id]["extraction_status"] = "filtered"
+                            row_by_id[article_id]["summarize_status"]  = "skipped"
+                            row_by_id[article_id]["classify_status"]   = "success"
+                            filtered_count    += 1
+                            consecutive_fails  = 0
+                            success = True
+                            break
+
                         row_by_id[article_id]["clean_url"]          = clean_url
                         row_by_id[article_id]["article_text"]       = article_text[:8000]  # cap at 8k chars
                         row_by_id[article_id]["extraction_status"]  = "success"
@@ -301,10 +351,10 @@ def extract_articles() -> tuple:
                     time.sleep(2)
                 except Exception as e:
                     if is_driver_dead(e):
-                        log.warning(f"         Chrome died — restarting immediately")
+                        log.warning(f"         Chrome session unusable ({type(e).__name__}) — restarting")
                         driver = restart_driver(driver)
                         consecutive_fails = 0
-                        # Don't count dead-driver as a retry; try the article fresh
+                        # Retry current article after browser restart.
                     else:
                         log.warning(f"         Error: {str(e)[:80]}")
                         time.sleep(2)
@@ -340,6 +390,7 @@ def extract_articles() -> tuple:
     save_staging(FILE_STAGED, list(row_by_id.values()))
 
     log.info(f"  Extracted:  {success_count}")
+    log.info(f"  Filtered:   {filtered_count}")
     log.info(f"  Fallback:   {sum(1 for r in rows if r.get('extraction_status') == 'fallback')}")
     log.info(f"  Failed:     {failed_count}")
 

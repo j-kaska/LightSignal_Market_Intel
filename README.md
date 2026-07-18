@@ -91,4 +91,48 @@ VOYAGE_API_KEY=your_key_here
 Sent automatically at the end of each article pipeline run via Outlook.
 Configure recipient in `scripts/utils/config.py` → `SUMMARY_EMAIL_TO`.
 
+## News Feed Protection and Recovery
+
+The article pipeline now maintains a rolling restore point for the news feed:
+
+- Source file: `data/raw/inputs/news_feed.csv`
+- Rolling backup (overwritten each run): `data/archive/inputs/news_feed_latest.csv`
+
+Behavior:
+
+1. Before classification appends rows, it validates the existing `news_feed.csv` header.
+2. If valid, it refreshes the rolling backup copy.
+3. If the header is missing or malformed, the run fails fast with a restore instruction.
+4. At the end of each article pipeline run, rolling backup is refreshed again for quick restore.
+
+### Recovery Plan (if news_feed is corrupted or overwritten)
+
+1. Pause scheduled article runs.
+2. Restore rolling backup:
+
+```powershell
+Copy-Item "data/archive/inputs/news_feed_latest.csv" "data/raw/inputs/news_feed.csv" -Force
+```
+
+3. Replay pending staged articles:
+
+```bash
+python scripts/articles/run_articles.py --classify-only --no-email
+```
+
+4. Validate recovery:
+- First row of `news_feed.csv` must start with `ID,Title,CleanURL,...`
+- Row count should increase after classify replay.
+- `python scripts/transform/transform_articles.py` should complete normally.
+
+### One-time Historical Recovery Procedure
+
+If you need to recover the most recent rows from a damaged no-header feed:
+
+1. Save the damaged file aside (salvage copy).
+2. Restore latest good archived feed to `data/raw/inputs/news_feed.csv`.
+3. Append only article IDs from salvage that do not exist in restored feed.
+4. Run `--classify-only` to replay pending staged records.
+5. Resume scheduler.
+
 ## Project created: 2026-02-23

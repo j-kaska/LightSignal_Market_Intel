@@ -38,7 +38,7 @@ SCRIPT_DIR = Path(__file__).parent
 ROOT       = SCRIPT_DIR.parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from utils.config import ARTICLES_DIR, FILE_RSS_FEEDS, FILE_STAGED, FILE_SEEN_URLS, BLOCKED_URL_PATTERNS
+from utils.config import ARTICLES_DIR, FILE_RSS_FEEDS, FILE_STAGED, FILE_SEEN_URLS, BLOCKED_URL_PATTERNS, BLOCKED_TITLE_PATTERNS
 
 # ── Logging ───────────────────────────────────────────────────────────────────
 log = logging.getLogger(__name__)
@@ -208,9 +208,18 @@ def fetch_rss() -> int:
             if not raw_url:
                 continue
 
-            # Block known non-article sources (e.g. YouTube videos)
+            # Block known non-article sources by URL pattern (e.g. direct YouTube links)
             if any(pattern in raw_url for pattern in BLOCKED_URL_PATTERNS):
                 log.debug(f"  Blocked URL: {raw_url[:70]}")
+                continue
+
+            # Title must be extracted before title-pattern check — do it early
+            title = clean_html_snippet(entry.get("title", ""))
+
+            # Block YouTube videos arriving via Google Alerts redirects (title check)
+            # and investment publications identifiable from the title
+            if any(pattern in title for pattern in BLOCKED_TITLE_PATTERNS):
+                log.debug(f"  Blocked title pattern: {title[:70]}")
                 continue
 
             # Exact URL duplicate check — against seen cache
@@ -223,7 +232,7 @@ def fetch_rss() -> int:
                 skipped_staged += 1
                 continue
 
-            title       = clean_html_snippet(entry.get("title", ""))
+            # title already extracted above for the blocked-title check
             description = clean_html_snippet(
                 entry.get("summary", "") or entry.get("description", "")
             )

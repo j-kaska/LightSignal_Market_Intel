@@ -38,8 +38,10 @@ import json
 import logging
 import re
 import sys
+import unicodedata
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from urllib.parse import urlparse, urlunparse
 
 import numpy as np
 from rapidfuzz import fuzz
@@ -51,6 +53,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 from utils.config import (
     FILE_STAGED, FILE_NEWS_FEED, FILE_DUPLICATE_CACHE, FILE_TITLE_CACHE,
+    FILE_SEEN_CLEAN_URLS,
     DUPLICATE_THRESHOLD, DUPLICATE_WINDOW_DAYS,
     TITLE_DEDUP_THRESHOLD, TITLE_DEDUP_WINDOW_DAYS,
     SENTENCE_TRANSFORMER_MODEL,
@@ -67,7 +70,10 @@ def _get_model():
     if _model is None:
         from sentence_transformers import SentenceTransformer
         log.info(f"  Loading sentence-transformer model: {SENTENCE_TRANSFORMER_MODEL}")
-        _model = SentenceTransformer(SENTENCE_TRANSFORMER_MODEL)
+        try:
+            _model = SentenceTransformer(SENTENCE_TRANSFORMER_MODEL, local_files_only=True)
+        except Exception:
+            _model = SentenceTransformer(SENTENCE_TRANSFORMER_MODEL)
         log.info("  Model loaded.")
     return _model
 
@@ -80,7 +86,22 @@ def _normalize_title(title: str) -> str:
     Google Alerts RSS titles typically end with ' - Outlet' or ' | Outlet'.
     Only strips the suffix if it is <= 60 chars (outlet names are short;
     legitimate mid-title dashes like 'X - after delays - breaks ground' are long).
+
+    Unicode normalization runs first so that en-dash (–), em-dash (—), and
+    non-breaking spaces produce the same normalized key as their ASCII equivalents.
     """
+    # Map all Unicode dash variants → ASCII hyphen; space separators → regular space
+    normalized = []
+    for ch in title:
+        cat = unicodedata.category(ch)
+        if cat == "Pd":    # Dash punctuation: en-dash, em-dash, figure dash, etc.
+            normalized.append("-")
+        elif cat == "Zs":  # Space separator: non-breaking space, thin space, etc.
+            normalized.append(" ")
+        else:
+            normalized.append(ch)
+    title = "".join(normalized)
+
     for sep in (" | ", " - "):
         if sep in title:
             parts = title.rsplit(sep, 1)
@@ -235,15 +256,19 @@ def dedup_articles() -> tuple:
     log.info(f"  Title cache entries:     {len(title_cache)}")
     log.info(f"  Embedding cache entries: {len(embed_cache)}")
 
-    # Batch-encode all pending articles at once (much faster than one-by-one)
-    model = _get_model()
-    texts = [
-        f"{r.get('title', '')} {r.get('rss_description', '')}".strip()
-        for r in pending
-    ]
-    log.info(f"  Encoding {len(texts)} articles...")
-    embeddings = model.encode(texts, batch_size=32, show_progress_bar=False)
-    log.info("  Encoding complete.")
+    # Batch-encode all pending articles (falls back to title-only if model unavailable)
+    embeddings = None
+    try:
+        model = _get_model()
+        texts = [
+            f"{r.get('title', '')} {r.get('rss_description', '')}".strip()
+            for r in pending
+        ]
+        log.info(f"  Encoding {len(texts)} articles...")
+        embeddings = model.encode(texts, batch_size=32, show_progress_bar=False)
+        log.info("  Encoding complete.")
+    except Exception as e:
+        log.warning(f"  Semantic embedding unavailable ({type(e).__name__}: {e}); running title-only dedup")
 
     fuzzy_count    = 0
     semantic_count = 0
@@ -254,24 +279,31 @@ def dedup_articles() -> tuple:
         article_id = article["article_id"]
         title      = article.get("title", "")
         normalized = _normalize_title(title)
-        embedding  = embeddings[i]
-
+        embedding  = embeddings[i] if embeddings is not None else None
         is_dup    = False
         dup_of_id = ""
         dup_layer = ""
 
-        # Layer 1: title fuzzy match
-        for cached_norm, cached in title_cache.items():
-            score = fuzz.token_sort_ratio(normalized, cached_norm)
-            if score >= TITLE_DEDUP_THRESHOLD:
-                is_dup    = True
-                dup_of_id = cached.get("id", "")
-                dup_layer = f"title_fuzzy (score={score})"
-                fuzzy_count += 1
-                break
+        # Layer 1a: exact title match (fastest — catches same-article-different-feed)
+        if normalized in title_cache:
+            is_dup    = True
+            dup_of_id = title_cache[normalized].get("id", "")
+            dup_layer = "title_exact"
+            fuzzy_count += 1
 
-        # Layer 2: semantic embedding (only if title check didn't flag it)
+        # Layer 1b: fuzzy title match (catches minor wording variants)
         if not is_dup:
+            for cached_norm, cached in title_cache.items():
+                score = fuzz.token_sort_ratio(normalized, cached_norm)
+                if score >= TITLE_DEDUP_THRESHOLD:
+                    is_dup    = True
+                    dup_of_id = cached.get("id", "")
+                    dup_layer = f"title_fuzzy (score={score})"
+                    fuzzy_count += 1
+                    break
+
+        # Layer 2: semantic embedding (only if title check didn't flag it and model loaded)
+        if not is_dup and embedding is not None:
             for cached_id, cached in embed_cache.items():
                 if cached_id == article_id:
                     continue  # never flag an article as a duplicate of itself
@@ -318,11 +350,12 @@ def dedup_articles() -> tuple:
                 "source"        : article.get("source", ""),
                 "original_title": title,
             }
-            embed_cache[article_id] = {
-                "date"     : datetime.now(timezone.utc).isoformat(),
-                "title"    : title,
-                "embedding": embedding.tolist(),
-            }
+            if embedding is not None:
+                embed_cache[article_id] = {
+                    "date"     : datetime.now(timezone.utc).isoformat(),
+                    "title"    : title,
+                    "embedding": embedding.tolist(),
+                }
 
     save_staging(FILE_STAGED, list(row_by_id.values()))
     _save_title_cache(FILE_TITLE_CACHE, title_cache)
@@ -334,6 +367,139 @@ def dedup_articles() -> tuple:
     log.info(f"  Non-dupes:      {non_dupe_count}")
 
     return fuzzy_count, semantic_count, non_dupe_count
+
+
+# ── Clean URL cache (Stage 2.5) ───────────────────────────────────────────────
+
+CLEAN_URL_RETENTION_DAYS = 30
+
+
+def _normalize_clean_url(url: str) -> str:
+    """
+    Canonical form for clean URL dedup: lowercase, strip fragment and trailing slash.
+    Keeps query params (some sites use them to distinguish articles).
+    """
+    try:
+        p = urlparse(url.strip())
+        canonical = urlunparse((p.scheme.lower(), p.netloc.lower(), p.path.rstrip("/"), p.params, p.query, ""))
+        return canonical
+    except Exception:
+        return url.strip().lower().rstrip("/")
+
+
+def _load_seen_clean_urls(path: Path) -> dict:
+    if not path.exists():
+        return {}
+    try:
+        with open(path) as f:
+            cache = json.load(f)
+    except Exception:
+        return {}
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=CLEAN_URL_RETENTION_DAYS)).isoformat()
+    return {k: v for k, v in cache.items() if v.get("date", "") >= cutoff}
+
+
+def _save_seen_clean_urls(path: Path, cache: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=CLEAN_URL_RETENTION_DAYS)).isoformat()
+    pruned = {k: v for k, v in cache.items() if v.get("date", "") >= cutoff}
+    with open(path, "w") as f:
+        json.dump(pruned, f, indent=2)
+
+
+# ── Stage 2.5 ─────────────────────────────────────────────────────────────────
+
+def dedup_clean_urls() -> int:
+    """
+    Stage 2.5: Dedup on resolved clean URLs after extraction.
+
+    Catches the class of duplicates that slip past Stage 1 because they arrive
+    via different Google Alerts redirect URLs (different feeds, same underlying
+    article). By the time this stage runs, extract.py has resolved each Google
+    redirect to the actual article URL, making same-article detection trivial.
+
+    Articles marked as clean-URL duplicates:
+      - summarize_status = "skipped"   → not summarized
+      - classify_status  = "success"   → counted as processed
+      - Written to news_feed.csv with Is_Duplicate = True
+
+    Returns count of clean-URL duplicates caught.
+    """
+    log.info("=" * 60)
+    log.info("  Stage 2.5: Clean URL Dedup")
+    log.info("=" * 60)
+
+    rows = load_staging(FILE_STAGED)
+    # Only examine articles that were just extracted and are pending summarization
+    candidates = [
+        r for r in rows
+        if r.get("extraction_status") in ("success", "fallback")
+        and r.get("summarize_status") == "pending"
+        and r.get("clean_url", "").strip()
+    ]
+
+    log.info(f"  Newly extracted articles to check: {len(candidates)}")
+
+    if not candidates:
+        log.info("  Nothing to check.")
+        return 0
+
+    seen_clean    = _load_seen_clean_urls(FILE_SEEN_CLEAN_URLS)
+    existing_ids  = _load_existing_news_feed_ids(FILE_NEWS_FEED)
+    row_by_id     = {r["article_id"]: r for r in rows}
+
+    log.info(f"  Clean URL cache entries: {len(seen_clean)}")
+
+    dup_count      = 0
+    news_feed_rows = []
+
+    for article in candidates:
+        article_id    = article["article_id"]
+        clean_url     = article.get("clean_url", "").strip()
+        title         = article.get("title", "")
+        canonical_url = _normalize_clean_url(clean_url)
+
+        if canonical_url and canonical_url in seen_clean:
+            dup_of_id = seen_clean[canonical_url].get("id", "")
+            log.info(f"  ⚠  CLEAN URL DUP  {title[:65]}")
+            log.info(f"         of: {dup_of_id}")
+            row_by_id[article_id]["summarize_status"] = "skipped"
+            row_by_id[article_id]["classify_status"]  = "success"
+            dup_count += 1
+
+            if article_id not in existing_ids:
+                news_feed_rows.append({
+                    "ID"                      : article_id,
+                    "Title"                   : title,
+                    "CleanURL"                : clean_url,
+                    "Source"                  : article.get("source", ""),
+                    "PublishedDate"           : article.get("published_date", ""),
+                    "Summary_AI"              : "",
+                    "Primary_Category"        : "",
+                    "Secondary_Categories"    : "",
+                    "States"                  : "[]",
+                    "DC_ID"                   : "",
+                    "Is_Duplicate"            : "True",
+                    "Duplicate_Of"            : dup_of_id,
+                    "Strategy_Alignment_Score": "",
+                    "Relevance_Score"         : "",
+                    "Mentions_Specific_DC"    : "",
+                    "Article_Text"            : article.get("article_text", "")[:2000],
+                })
+        else:
+            if canonical_url:
+                seen_clean[canonical_url] = {
+                    "id"   : article_id,
+                    "date" : datetime.now(timezone.utc).isoformat(),
+                    "title": title,
+                }
+
+    save_staging(FILE_STAGED, list(row_by_id.values()))
+    _save_seen_clean_urls(FILE_SEEN_CLEAN_URLS, seen_clean)
+    _append_to_news_feed(FILE_NEWS_FEED, news_feed_rows)
+
+    log.info(f"  Clean URL dupes caught: {dup_count}")
+    return dup_count
 
 
 if __name__ == "__main__":

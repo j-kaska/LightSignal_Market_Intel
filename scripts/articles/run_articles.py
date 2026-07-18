@@ -8,6 +8,7 @@ Pipeline stages:
   1.  fetch_rss.py  — pull new articles from RSS feeds, exact-dupe filter
   1.5 dedup.py      — stacked dedup (title fuzzy + semantic embedding)
   2.  extract.py    — Selenium: resolve clean URL + extract article text
+  2.5 dedup.py      — clean URL dedup (catches same-article-different-redirect)
   3.  summarize.py  — Gemini: write 2-4 sentence Summary_AI
   4.  classify.py   — sentence-transformers backstop + Gemini classification
   → Output: data/raw/inputs/news_feed.csv
@@ -29,7 +30,9 @@ Logs: data/articles/logs/YYYY-MM-DD_HH-MM_articles.log
 import argparse
 import csv
 import logging
+import shutil
 import sys
+import time
 import traceback
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -39,7 +42,12 @@ SCRIPT_DIR = Path(__file__).parent
 ROOT       = SCRIPT_DIR.parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from utils.config import FILE_STAGED, ARTICLES_LOG_DIR
+from utils.config import (
+    FILE_STAGED,
+    ARTICLES_LOG_DIR,
+    FILE_NEWS_FEED,
+    FILE_NEWS_FEED_ROLLING_BACKUP,
+)
 
 # ── Logging setup ─────────────────────────────────────────────────────────────
 
@@ -137,16 +145,24 @@ def get_unprocessed_ids() -> set:
 def run_stage(label: str, func, errors: list):
     """Run a pipeline stage. Collects errors, continues on failure."""
     log = logging.getLogger(__name__)
+    started = time.monotonic()
     try:
-        return func()
+        result = func()
+        elapsed = time.monotonic() - started
+        log.info(f"  Stage '{label}' complete in {elapsed:.1f}s")
+        return result
     except SystemExit as e:
+        elapsed = time.monotonic() - started
         msg = f"Pipeline stopped at stage: {label} (exit {e.code})"
         log.error(f"  {msg}")
+        log.error(f"  Stage '{label}' elapsed: {elapsed:.1f}s")
         errors.append(msg + "\n")
         sys.exit(e.code)
     except Exception as e:
+        elapsed = time.monotonic() - started
         msg = f"{label} failed: {type(e).__name__}: {e}"
         log.error(f"  {msg}")
+        log.error(f"  Stage '{label}' elapsed: {elapsed:.1f}s")
         log.error(traceback.format_exc())
         errors.append(msg + "\n")
         return None
@@ -209,6 +225,15 @@ def main():
     else:
         log.info("  Stage 2: Extract — skipped")
 
+    # ── Stage 2.5: Clean URL Dedup ───────────────────────────────────────────
+    # Catches same-article-different-Google-redirect duplicates that Stage 1.5
+    # cannot detect (Google redirect URLs differ; resolved clean URLs match).
+    if not args.classify_only:
+        from articles.dedup import dedup_clean_urls
+        run_stage("Clean URL Dedup", dedup_clean_urls, errors)
+    else:
+        log.info("  Stage 2.5: Clean URL Dedup — skipped")
+
     # ── Stage 3: Summarize ────────────────────────────────────────────────────
     if not args.classify_only:
         from articles.summarize import summarize_articles
@@ -253,6 +278,16 @@ def _finish(log, start, log_path, errors, args):
     else:
         log.info(f"  ✓  Article pipeline complete — {minutes}m {seconds}s")
     log.info(f"  Log: {log_path}")
+
+    if FILE_NEWS_FEED.exists():
+        FILE_NEWS_FEED_ROLLING_BACKUP.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(FILE_NEWS_FEED, FILE_NEWS_FEED_ROLLING_BACKUP)
+        log.info(f"  Rolling backup refreshed: {FILE_NEWS_FEED_ROLLING_BACKUP}")
+        log.info(
+            "  Recovery: copy rolling backup to data/raw/inputs/news_feed.csv, "
+            "then run --classify-only"
+        )
+
     log.info("=" * 60)
 
     # Send daily summary email

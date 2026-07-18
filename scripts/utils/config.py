@@ -70,11 +70,13 @@ FILE_STAGED             = ARTICLES_STAGING_DIR / "staged_articles.csv"
 FILE_SEEN_URLS          = ARTICLES_STAGING_DIR / "seen_urls.json"
 FILE_DUPLICATE_CACHE    = ARTICLES_STAGING_DIR / "duplicate_cache.json"
 FILE_TITLE_CACHE        = ARTICLES_STAGING_DIR / "title_cache.json"
+FILE_SEEN_CLEAN_URLS    = ARTICLES_STAGING_DIR / "seen_clean_urls.json"
 
 # Handoff point — article pipeline writes here, run_all.py reads from here
 # FILE_NEWS_FEED and FILE_ARTICLES point to the same file — both names used
 # in different parts of the codebase for clarity
 FILE_NEWS_FEED          = INPUTS_DIR / "news_feed.csv"
+FILE_NEWS_FEED_ROLLING_BACKUP = ARCHIVE_DIR / "news_feed_latest.csv"
 
 # ── Output ────────────────────────────────────────────────────────────────────
 OUTPUT_LATEST_DIR       = ROOT / "output" / "latest"
@@ -117,11 +119,25 @@ SENTENCE_TRANSFORMER_MODEL  = "all-MiniLM-L6-v2"
 DUPLICATE_THRESHOLD      = 0.85   # cosine similarity — lowered from 0.88 to catch more cross-outlet variants
 DUPLICATE_WINDOW_DAYS    = 14     # rolling window for semantic duplicate cache (was 7)
 
-TITLE_DEDUP_THRESHOLD    = 88     # rapidfuzz token_sort_ratio (0–100)
+TITLE_DEDUP_THRESHOLD    = 85     # rapidfuzz token_sort_ratio (0–100)
 TITLE_DEDUP_WINDOW_DAYS  = 14
 
 # URLs containing any of these substrings are dropped at fetch time (before staging)
 BLOCKED_URL_PATTERNS     = ["youtube.com", "youtu.be"]
+
+# Title substrings that identify YouTube content arriving via Google Alerts redirects
+# (raw_url is a Google News link, so URL pattern won't catch these)
+BLOCKED_TITLE_PATTERNS   = [" - YouTube", "| YouTube", " — YouTube", "- YouTube"]
+
+# Domains filtered after clean URL resolution — pure investment/financial publications
+# with no market-intelligence value for Lightpath infrastructure tracking
+BLOCKED_SOURCE_DOMAINS   = [
+    "seekingalpha.com",
+    "fool.com",          # The Motley Fool
+    "benzinga.com",
+    "thestreet.com",
+    "tastylive.com",
+]
 
 # ── Article pipeline geography ────────────────────────────────────────────────
 CORE_FOOTPRINT = {"NY", "NJ", "CT", "MA", "PA", "OH", "FL", "AZ"}

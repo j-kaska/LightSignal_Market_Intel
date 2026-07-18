@@ -155,9 +155,9 @@ Return an integer **1–5** in `relevance_score` based on geography.
 
 | Score | Condition |
 |---|---|
-| **5** | Article mentions a **Core Footprint** state |
-| **4** | Article mentions an **Expansion Market** or **Adjacent State** |
-| **3** | No geographic anchor (national/global story) |
+| **5** | Article mentions a **Core Footprint States** |
+| **4** | Article mentions an **Expansion Markets** state |
+| **3** | No geographic anchor (national/global story) or **Adjacent States** |
 | **2** | Article mentions a US state outside the above groups |
 | **1** | Reserved — do not assign unless explicitly instructed |
 
@@ -168,7 +168,7 @@ NY, NJ, CT, MA, PA, OH, FL, AZ
 TX, WI, IL, MO, IN, MI, VA, WV, UT
 
 ### Adjacent States
-GA, NC, MD, DE, NH, RI, VT, SC, KY, KS, MN, NE, TN
+GA, MD, KY
 
 ---
 

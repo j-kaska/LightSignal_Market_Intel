@@ -12,6 +12,7 @@ article_text or rss_description in staged_articles.csv:
 Provider is controlled by LIGHTSIGNAL_PROVIDER env var (default: gemini).
 Set to "anthropic" to use Claude instead.
 If Gemini quota is exhausted mid-run, automatically falls back to Anthropic.
+Set LIGHTSIGNAL_RETRY_FAILED_SUMMARIES=1 to also retry rows with summarize_status="failed".
 
 Run directly:
   python scripts/articles/summarize.py
@@ -43,6 +44,10 @@ from utils.config import (
 
 # ── Logging ───────────────────────────────────────────────────────────────────
 log = logging.getLogger(__name__)
+# Reduce noisy transport-level request logs; keep stage-level logs visible.
+logging.getLogger("openai").setLevel(logging.WARNING)
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
 
 # ── Quota sentinel ────────────────────────────────────────────────────────────
 QUOTA_EXHAUSTED = object()
@@ -81,11 +86,31 @@ def _make_client(provider=None):
         base_url=GEMINI_BASE_URL,
         api_key=os.environ.get("GEMINI_API_KEY", ""),
         http_client=_http_client,
+        max_retries=0,
+        timeout=60,
     )
 
 
 def _is_rate_limit(e: Exception) -> bool:
     return getattr(e, "status_code", None) == 429 or "RateLimitError" in type(e).__name__
+
+
+def _is_transient_http_error(e: Exception) -> bool:
+    status_code = getattr(e, "status_code", None)
+    if status_code in {408, 425, 429, 500, 502, 503, 504}:
+        return True
+
+    msg = str(e).lower()
+    transient_markers = (
+        "timed out",
+        "timeout",
+        "temporarily unavailable",
+        "service unavailable",
+        "connection reset",
+        "connection aborted",
+        "remote protocol error",
+    )
+    return any(marker in msg for marker in transient_markers)
 
 
 def _call_llm(client, user_content: str, max_tokens: int, provider=None) -> str:
@@ -128,6 +153,9 @@ def summarize_article(client, title: str, text: str, provider=None):
                 rate_limit_count += 1
                 wait = 60 * (attempt + 1)   # 60 / 120 / 180s
                 log.warning(f"    Rate limited (attempt {attempt + 1}): waiting {wait}s")
+            elif _is_transient_http_error(e):
+                wait = 5 * (attempt + 1)    # 5 / 10 / 15s
+                log.info(f"    Transient HTTP error (attempt {attempt + 1}): retrying in {wait}s")
             else:
                 wait = 10 * (attempt + 1)
                 log.warning(f"    Summarize error (attempt {attempt + 1}): {str(e)[:80]} — waiting {wait}s")
@@ -165,12 +193,18 @@ def summarize_articles() -> tuple:
     log.info("=" * 60)
     log.info("  Stage 3: Summarize Articles")
     log.info(f"  Provider: {API_PROVIDER}")
+
+    retry_failed = os.environ.get("LIGHTSIGNAL_RETRY_FAILED_SUMMARIES", "0") == "1"
+    eligible_statuses = {"pending", "failed"} if retry_failed else {"pending"}
+    if retry_failed:
+        log.info("  Retry mode: enabled (including prior failed summaries)")
+
     log.info("=" * 60)
 
     rows    = load_staging(FILE_STAGED)
     pending = [
         r for r in rows
-        if r.get("summarize_status") == "pending"
+        if r.get("summarize_status") in eligible_statuses
         and r.get("extraction_status") in ("success", "fallback")
         and (r.get("article_text") or r.get("rss_description"))
     ]

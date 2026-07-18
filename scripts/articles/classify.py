@@ -27,6 +27,7 @@ import sys
 import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from shutil import copy2
 
 from openai import OpenAI
 from sentence_transformers import SentenceTransformer
@@ -39,6 +40,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 from utils.config import (
     FILE_STAGED, FILE_NEWS_FEED, FILE_DUPLICATE_CACHE,
+    FILE_NEWS_FEED_ROLLING_BACKUP,
     ARTICLES_MODEL, GEMINI_BASE_URL,
     API_PROVIDER, ANTHROPIC_MODEL,
     SENTENCE_TRANSFORMER_MODEL,
@@ -48,6 +50,10 @@ from utils.config import (
 
 # ── Logging ───────────────────────────────────────────────────────────────────
 log = logging.getLogger(__name__)
+# Reduce noisy transport-level request logs; keep stage-level logs visible.
+logging.getLogger("openai").setLevel(logging.WARNING)
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
 
 # ── Quota sentinel ────────────────────────────────────────────────────────────
 QUOTA_EXHAUSTED = object()
@@ -66,11 +72,31 @@ def _make_client(provider=None):
         base_url=GEMINI_BASE_URL,
         api_key=os.environ.get("GEMINI_API_KEY", ""),
         http_client=_http_client,
+        max_retries=0,
+        timeout=60,
     )
 
 
 def _is_rate_limit(e: Exception) -> bool:
     return getattr(e, "status_code", None) == 429 or "RateLimitError" in type(e).__name__
+
+
+def _is_transient_http_error(e: Exception) -> bool:
+    status_code = getattr(e, "status_code", None)
+    if status_code in {408, 425, 429, 500, 502, 503, 504}:
+        return True
+
+    msg = str(e).lower()
+    transient_markers = (
+        "timed out",
+        "timeout",
+        "temporarily unavailable",
+        "service unavailable",
+        "connection reset",
+        "connection aborted",
+        "remote protocol error",
+    )
+    return any(marker in msg for marker in transient_markers)
 
 
 def _call_llm(client, system_prompt: str, user_content: str, max_tokens: int, provider=None) -> str:
@@ -113,9 +139,36 @@ infrastructure company (Lightpath) tracking data center and network investment s
 COMPANY CONTEXT:
 Core footprint states: NY, NJ, CT, MA, PA, OH, AZ
 Florida presence is Miami/South Florida ONLY — not statewide.
-Expansion markets: TX, WI, IL, MO, IN, MI, VA, WV, UT
+Expansion markets: TX, WI, IL, MO, IN, MI, VA, WB, UT
 
-PRIMARY CATEGORIES (pick exactly one):
+═══════════════════════════════════════════════════════════════
+MANDATORY PRE-SCORING RULES — apply these BEFORE anything else
+═══════════════════════════════════════════════════════════════
+
+RULE 1 — INVESTMENT CONTENT: If the article is primarily stock analysis, earnings coverage,
+or financial market content, set Strategy=1 AND Relevance=1, regardless of what companies or
+data centers are mentioned. This includes:
+  • Articles from SeekingAlpha, The Motley Fool, Benzinga, TheStreet, tastylive, or any site
+    whose primary purpose is stock/investment coverage
+  • Earnings call transcripts or summaries ("Q1 2026 earnings", "quarterly results")
+  • Stock price targets, analyst ratings, buy/sell/hold recommendations
+  • Articles framed as investment advice ("should you buy X", "best energy stocks")
+  • Company financial results covered purely from an investor angle
+  Exception: if the article also contains specific infrastructure announcements (a named project,
+  a signed contract, a regulatory decision), score the infrastructure signal normally.
+
+RULE 2 — INTERNATIONAL CONTENT: If the primary story location is outside the United States
+(UK, EU, Canada, Australia, Asia, Middle East, Africa, Latin America), set Relevance=1,
+regardless of whether US companies are mentioned. Lightpath's fiber network is US-only.
+  Exception: a story about a US company's global capex plan that explicitly names US locations
+  can score Relevance 2-3 for its US component.
+
+RULE 3 — STRATEGY=1 FORCES RELEVANCE=1: Whenever Strategy=1 for any reason, Relevance MUST
+also be 1. Geographic proximity is irrelevant when there is no infrastructure signal.
+
+═══════════════════════════════════════════════════════════════
+PRIMARY CATEGORIES (pick exactly one)
+═══════════════════════════════════════════════════════════════
 - Data Center Development: New DC announcements, groundbreakings, expansions, campus developments
 - Fiber & Network Infrastructure: Fiber builds, network expansions, submarine cables, long-haul routes
 - Hyperscaler Strategy: AWS, Azure, Google, Meta, Apple, Oracle, Anthropic, OpenAI, xAI — strategic moves, investment plans, capacity announcements
@@ -129,46 +182,44 @@ Same list as above. Leave empty [] if none apply.
 
 STATES: List 2-letter US state codes explicitly mentioned in the article. Use [] for national/global stories.
 
-STRATEGY ALIGNMENT SCORE (1-5):
-5 = Strong specific signal: named project/site with committed capital, signed contract, legislation
-    with binding timeline, or major hyperscaler capacity commitment that directly affects route decisions
-4 = Clear actionable signal: announced project with named location and developer, significant
-    regulatory decision with real construction impact — NOT general industry trends
-3 = Moderate signal: industry trend or market movement that could indirectly affect routing decisions,
-    general hyperscaler plans without named locations
-2 = Weak signal: background context, company financial news, early-stage rumors, technology
-    announcements without direct infrastructure implications
-1 = No infrastructure angle; OR investment/earnings content (stock picks, price targets, earnings recaps,
-    analyst ratings); OR org/people announcements (new hires, appointments, departures, restructurings);
-    OR opinion/commentary columns with no actionable signal
+═══════════════════════════════════════════════════════════════
+STRATEGY ALIGNMENT SCORE (1-5)
+═══════════════════════════════════════════════════════════════
+(Check Rules 1-3 first. Only score 2-5 if those rules don't apply.)
 
-RELEVANCE SCORE (1-5) — geographic proximity to our network markets:
+5 = Strong specific signal: named project/site with committed capital, signed contract, legislation
+    with binding timeline, or major hyperscaler capacity commitment that directly drives route decisions
+4 = Clear actionable signal: announced project with named location and developer, significant
+    regulatory decision with real construction impact. NOT general industry trends.
+3 = Moderate signal: a named company announces plans for a named US market, or a significant
+    regulatory/legislative development in a named state — but without confirmed capital or timeline.
+    Must involve a specific named location or named market. Generic industry trends do NOT qualify.
+2 = Weak signal: background context, general industry trend without named location, company financial
+    news with indirect infrastructure implication, early-stage rumors, technology announcements
+    without direct infrastructure commitment
+1 = See Rule 1 above (investment/earnings/org content) OR no infrastructure angle whatsoever
+
+═══════════════════════════════════════════════════════════════
+RELEVANCE SCORE (1-5) — geographic proximity to our network markets
+═══════════════════════════════════════════════════════════════
+(Check Rules 2-3 first. Only score 2-5 if those rules don't apply.)
+
 5 = Core footprint state (NY, NJ, CT, MA, PA, OH, AZ) with specific named location;
-    OR Miami/South Florida specifically (our FL presence is Miami-only — not statewide)
+    OR Miami/South Florida specifically (our FL presence is Miami-only)
 4 = Expansion market (TX, WI, IL, MO, IN, MI, VA, WV, UT) OR adjacent state
     (GA, NC, MD, DE, NH, RI, VT, SC, KY, KS) with specific named location
 3 = Non-adjacent US state with specific named location; OR national story with clear
     named-market impact; OR Florida story outside Miami/South Florida
 2 = Non-footprint US state with no named location; OR general US story without named-market impact
-1 = International story (any non-US country, even if US companies are mentioned);
-    OR any article scoring Strategy=1 (investment content, earnings, org news — geography irrelevant)
+1 = See Rules 2 and 3 above
 
-IMPORTANT: If an article scores Strategy=1 for ANY reason, Relevance MUST also be 1.
-Geographic proximity is irrelevant when there is no infrastructure signal.
-
-IMPORTANT: SeekingAlpha, The Motley Fool, Investor.com, and similar investment sites publish
-stock analysis, not infrastructure intelligence. Score Strategy=1, Relevance=1 regardless of content.
-
-IMPORTANT: Articles about infrastructure in non-US countries (UK, EU, Asia, Australia, Canada, etc.)
-score Relevance=1 even if major US companies are mentioned. Our network does not reach international
-locations.
-
-MENTIONS_SPECIFIC_DC: true only if the article references a data center by a specific identifying
-name — a facility/campus name (e.g. "QTS Richmond", "Equinix NY5", "Project Gravity", "Project Blue"),
-a well-known campus designation (e.g. "Google's The Dalles facility", "Meta's Prineville campus"),
-or a named project with a distinct identifier. A city or county name alone does NOT qualify —
-"a data center in Ashburn" or "proposed data center in Box Elder County" are NOT specific enough.
-The facility must have a name that distinguishes it from other data centers in the same area.
+═══════════════════════════════════════════════════════════════
+MENTIONS_SPECIFIC_DC
+═══════════════════════════════════════════════════════════════
+true only if the article references a data center by a specific facility or campus name
+(e.g. "QTS Richmond", "Equinix NY5", "Project Gravity", "Meta's Prineville campus").
+A city, county, or company name alone does NOT qualify — "a data center in Ashburn" or
+"proposed data center in Box Elder County" are NOT specific enough.
 
 Respond with ONLY valid JSON, no markdown, no explanation:
 {
@@ -258,6 +309,9 @@ def classify_article(client, title: str, summary: str, provider=None):
                 rate_limit_count += 1
                 wait = 60 * (attempt + 1)
                 log.warning(f"    Rate limited (attempt {attempt + 1}): waiting {wait}s")
+            elif _is_transient_http_error(e):
+                wait = 5 * (attempt + 1)
+                log.info(f"    Transient HTTP error (attempt {attempt + 1}): retrying in {wait}s")
             else:
                 wait = 10 * (attempt + 1)
                 log.warning(f"    LLM error (attempt {attempt + 1}): {str(e)[:80]} — waiting {wait}s")
@@ -294,11 +348,46 @@ def load_existing_news_feed_ids(path: Path) -> set:
         return {row.get("ID", "") for row in reader}
 
 
+def validate_news_feed_header(path: Path) -> None:
+    """Ensure existing news_feed.csv has a valid header row before append."""
+    if not path.exists():
+        return
+
+    with open(path, newline="", encoding="utf-8") as f:
+        reader = csv.reader(f)
+        header = next(reader, None)
+
+    if not header:
+        raise RuntimeError(
+            f"news_feed.csv exists but is empty at {path}. "
+            "Delete it or restore from backup, then re-run classify."
+        )
+
+    first_col = (header[0] or "").lstrip("\ufeff").strip()
+    if first_col != "ID":
+        raise RuntimeError(
+            f"news_feed.csv header is invalid at {path}. "
+            "Expected first column 'ID'. Restore from backup before re-running."
+        )
+
+
+def refresh_rolling_news_feed_backup(source: Path, backup: Path) -> None:
+    """Overwrite the rolling restore point with the current valid news_feed.csv."""
+    if not source.exists():
+        return
+
+    validate_news_feed_header(source)
+    backup.parent.mkdir(parents=True, exist_ok=True)
+    copy2(source, backup)
+    log.info(f"  Rolling backup refreshed: {backup}")
+
+
 def append_to_news_feed(path: Path, rows: list) -> None:
     """Append new classified articles to news_feed.csv."""
     if not rows:
         return
     path.parent.mkdir(parents=True, exist_ok=True)
+    validate_news_feed_header(path)
     write_header = not path.exists()
     with open(path, "a", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=NEWS_FEED_COLUMNS, extrasaction="ignore")
@@ -470,6 +559,7 @@ def classify_articles() -> tuple:
                 break
 
     # Write results
+    refresh_rolling_news_feed_backup(FILE_NEWS_FEED, FILE_NEWS_FEED_ROLLING_BACKUP)
     save_staging(FILE_STAGED, list(row_by_id.values()))
     save_cache(FILE_DUPLICATE_CACHE, cache)
     append_to_news_feed(FILE_NEWS_FEED, news_feed_rows)
