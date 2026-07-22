@@ -69,15 +69,6 @@ FILE_DUPLICATE_CACHE    = ARTICLES_STAGING_DIR / "duplicate_cache.json"
 FILE_TITLE_CACHE        = ARTICLES_STAGING_DIR / "title_cache.json"
 FILE_SEEN_CLEAN_URLS    = ARTICLES_STAGING_DIR / "seen_clean_urls.json"
 
-# DC candidate review workflow (dc_candidates.py → human review → apply_dc_approvals.py).
-# dc_candidates.py suggests article→facility matches into the queue; a human copies
-# approved rows into the approvals file and sets review_status=approved; then
-# apply_dc_approvals.py patches DC_ID into news_feed.csv. DC_ID is never auto-assigned
-# (see docs/agent_studio_instructions.md).
-FILE_DC_REVIEW_QUEUE    = ARTICLES_STAGING_DIR / "dc_review_queue.csv"
-FILE_DC_REVIEW_OVERFLOW = ARTICLES_STAGING_DIR / "dc_review_queue_overflow.csv"
-FILE_DC_APPROVALS       = ARTICLES_STAGING_DIR / "dc_review_queue_approved.csv"
-
 # Handoff point — article pipeline writes here, run_all.py reads from here
 # FILE_NEWS_FEED and FILE_ARTICLES point to the same file — both names used
 # in different parts of the codebase for clarity
@@ -143,16 +134,6 @@ DUPLICATE_WINDOW_DAYS    = 14     # rolling window for semantic duplicate cache 
 
 TITLE_DEDUP_THRESHOLD    = 85     # rapidfuzz token_sort_ratio (0–100)
 TITLE_DEDUP_WINDOW_DAYS  = 14
-
-# ── DC candidate matching (dc_candidates.py) ──────────────────────────────────
-# Minimum rapidfuzz partial_ratio (0–100) for a DC-name-vs-article-text match to
-# enter the review queue. partial_ratio scores the best-aligned substring, so it
-# is lenient — set high to keep the human queue precise, since every row is a
-# suggestion a person must approve. Tune against real queue output.
-DC_CANDIDATE_THRESHOLD   = 90
-# Cap on the reviewable queue per run; lower-confidence overflow spills to
-# dc_review_queue_overflow.csv so the review file stays a manageable size.
-MAX_REVIEW_QUEUE_SIZE    = 200
 
 # URLs containing any of these substrings are dropped at fetch time (before staging)
 BLOCKED_URL_PATTERNS     = ["youtube.com", "youtu.be"]
