@@ -31,14 +31,13 @@ from email.utils import parsedate_to_datetime
 from pathlib import Path
 
 import feedparser
-import requests
 
 # ── Path setup ────────────────────────────────────────────────────────────────
 SCRIPT_DIR = Path(__file__).parent
 ROOT       = SCRIPT_DIR.parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from utils.config import ARTICLES_DIR, FILE_RSS_FEEDS, FILE_STAGED, FILE_SEEN_URLS, BLOCKED_URL_PATTERNS, BLOCKED_TITLE_PATTERNS
+from utils.config import FILE_RSS_FEEDS, FILE_STAGED, FILE_SEEN_URLS, BLOCKED_URL_PATTERNS, BLOCKED_TITLE_PATTERNS
 
 # ── Logging ───────────────────────────────────────────────────────────────────
 log = logging.getLogger(__name__)
@@ -61,6 +60,8 @@ STAGING_COLUMNS = [
     "extraction_status",  # pending / success / failed
     "summarize_status",   # pending / success / failed
     "classify_status",    # pending / success / failed
+    "Processed",          # No / Yes — set by run_articles.mark_processed
+    "summarize_attempts", # retry counter, see SUMMARIZE_MAX_ATTEMPTS
 ]
 
 
@@ -254,6 +255,8 @@ def fetch_rss() -> int:
                 "extraction_status"  : "pending",
                 "summarize_status"   : "pending",
                 "classify_status"    : "pending",
+                "Processed"          : "No",
+                "summarize_attempts" : "0",
             })
 
             # Mark as seen immediately so we don't double-stage within this run

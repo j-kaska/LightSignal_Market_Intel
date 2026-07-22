@@ -21,39 +21,26 @@ Or called by:
   python scripts/articles/run_articles.py
 """
 
-import csv
-import httpx
 import logging
 import os
-import re
 import sys
-import time
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-
-from openai import OpenAI
 
 # ── Path setup ────────────────────────────────────────────────────────────────
 SCRIPT_DIR = Path(__file__).parent
 ROOT       = SCRIPT_DIR.parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 
+from articles._llm import QUOTA_EXHAUSTED, call_with_retries, make_client as _make_client
+from articles._staging import load_staging, save_staging
 from utils.config import (
-    FILE_STAGED, ARTICLES_MODEL, GEMINI_BASE_URL,
-    API_PROVIDER, ANTHROPIC_MODEL,
+    FILE_STAGED, API_PROVIDER,
+    LLM_MAX_WORKERS, SUMMARIZE_MAX_ATTEMPTS,
 )
 
 # ── Logging ───────────────────────────────────────────────────────────────────
 log = logging.getLogger(__name__)
-# Reduce noisy transport-level request logs; keep stage-level logs visible.
-logging.getLogger("openai").setLevel(logging.WARNING)
-logging.getLogger("httpx").setLevel(logging.WARNING)
-logging.getLogger("httpcore").setLevel(logging.WARNING)
-
-# ── Quota sentinel ────────────────────────────────────────────────────────────
-QUOTA_EXHAUSTED = object()
-
-# ── SSL bypass (corporate network) ───────────────────────────────────────────
-_http_client = httpx.Client(verify=False)
 
 # ── Summarization prompt ──────────────────────────────────────────────────────
 SYSTEM_PROMPT = """You are a market intelligence analyst summarizing news articles for
@@ -75,112 +62,20 @@ def build_prompt(title: str, text: str) -> str:
     return f"Article title: {title}\n\nArticle text:\n{snippet}\n\nWrite a 2-4 sentence summary."
 
 
-# ── Provider-agnostic client + call ──────────────────────────────────────────
-
-def _make_client(provider=None):
-    p = provider or API_PROVIDER
-    if p == "anthropic":
-        import anthropic
-        return anthropic.Anthropic(http_client=_http_client)
-    return OpenAI(
-        base_url=GEMINI_BASE_URL,
-        api_key=os.environ.get("GEMINI_API_KEY", ""),
-        http_client=_http_client,
-        max_retries=0,
-        timeout=60,
-    )
-
-
-def _is_rate_limit(e: Exception) -> bool:
-    return getattr(e, "status_code", None) == 429 or "RateLimitError" in type(e).__name__
-
-
-def _is_transient_http_error(e: Exception) -> bool:
-    status_code = getattr(e, "status_code", None)
-    if status_code in {408, 425, 429, 500, 502, 503, 504}:
-        return True
-
-    msg = str(e).lower()
-    transient_markers = (
-        "timed out",
-        "timeout",
-        "temporarily unavailable",
-        "service unavailable",
-        "connection reset",
-        "connection aborted",
-        "remote protocol error",
-    )
-    return any(marker in msg for marker in transient_markers)
-
-
-def _call_llm(client, user_content: str, max_tokens: int, provider=None) -> str:
-    p = provider or API_PROVIDER
-    if p == "anthropic":
-        import anthropic
-        response = client.messages.create(
-            model=ANTHROPIC_MODEL,
-            max_tokens=max_tokens,
-            system=SYSTEM_PROMPT,
-            messages=[{"role": "user", "content": user_content}],
-        )
-        return response.content[0].text.strip()
-    response = client.chat.completions.create(
-        model=ARTICLES_MODEL,
-        max_tokens=max_tokens,
-        messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user",   "content": user_content},
-        ],
-    )
-    return response.choices[0].message.content.strip()
-
-
 def summarize_article(client, title: str, text: str, provider=None):
     """
     Call configured LLM to summarize one article.
     Returns summary string, None on non-quota failure, or QUOTA_EXHAUSTED sentinel
     if all retries failed with rate-limit/billing errors.
     """
-    rate_limit_count = 0
-    for attempt in range(3):
-        try:
-            raw = _call_llm(client, build_prompt(title, text), max_tokens=300, provider=provider)
-            raw = re.sub(r'^```[a-z]*\s*', '', raw)
-            raw = re.sub(r'\s*```$', '', raw).strip()
-            return raw
-        except Exception as e:
-            if _is_rate_limit(e):
-                rate_limit_count += 1
-                wait = 60 * (attempt + 1)   # 60 / 120 / 180s
-                log.warning(f"    Rate limited (attempt {attempt + 1}): waiting {wait}s")
-            elif _is_transient_http_error(e):
-                wait = 5 * (attempt + 1)    # 5 / 10 / 15s
-                log.info(f"    Transient HTTP error (attempt {attempt + 1}): retrying in {wait}s")
-            else:
-                wait = 10 * (attempt + 1)
-                log.warning(f"    Summarize error (attempt {attempt + 1}): {str(e)[:80]} — waiting {wait}s")
-            time.sleep(wait)
-    if rate_limit_count == 3:
-        return QUOTA_EXHAUSTED
-    return None
-
-
-# ── Staging helpers ───────────────────────────────────────────────────────────
-
-def load_staging(path: Path) -> list:
-    if not path.exists():
-        return []
-    with open(path, newline="", encoding="utf-8") as f:
-        return list(csv.DictReader(f))
-
-
-def save_staging(path: Path, rows: list) -> None:
-    if not rows:
-        return
-    with open(path, "w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
-        writer.writeheader()
-        writer.writerows(rows)
+    return call_with_retries(
+        client,
+        SYSTEM_PROMPT,
+        build_prompt(title, text),
+        max_tokens=300,
+        provider=provider,
+        label="Summarize",
+    )
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
@@ -194,22 +89,47 @@ def summarize_articles() -> tuple:
     log.info("  Stage 3: Summarize Articles")
     log.info(f"  Provider: {API_PROVIDER}")
 
-    retry_failed = os.environ.get("LIGHTSIGNAL_RETRY_FAILED_SUMMARIES", "0") == "1"
-    eligible_statuses = {"pending", "failed"} if retry_failed else {"pending"}
-    if retry_failed:
-        log.info("  Retry mode: enabled (including prior failed summaries)")
+    # Failed rows are retried automatically until they hit SUMMARIZE_MAX_ATTEMPTS.
+    # The env var forces a retry of everything, ignoring the attempt cap.
+    force_retry = os.environ.get("LIGHTSIGNAL_RETRY_FAILED_SUMMARIES", "0") == "1"
+    if force_retry:
+        log.info("  Retry mode: forced (ignoring attempt cap)")
 
     log.info("=" * 60)
 
-    rows    = load_staging(FILE_STAGED)
+    def _attempts(r) -> int:
+        try:
+            return int(r.get("summarize_attempts") or 0)
+        except (TypeError, ValueError):
+            return 0
+
+    def _eligible(r) -> bool:
+        status = r.get("summarize_status")
+        if status == "pending":
+            return True
+        if status == "failed":
+            return force_retry or _attempts(r) < SUMMARIZE_MAX_ATTEMPTS
+        return False
+
+    rows = load_staging(FILE_STAGED)
+
+    # Backfill the retry counter on staging files written before it existed, so
+    # every row carries the column and DictWriter sees a consistent schema.
+    for r in rows:
+        r.setdefault("summarize_attempts", "0")
+        if r.get("summarize_attempts") is None:
+            r["summarize_attempts"] = "0"
+
     pending = [
         r for r in rows
-        if r.get("summarize_status") in eligible_statuses
+        if _eligible(r)
         and r.get("extraction_status") in ("success", "fallback")
         and (r.get("article_text") or r.get("rss_description"))
     ]
 
-    log.info(f"  Pending summarization: {len(pending)}")
+    retrying = sum(1 for r in pending if r.get("summarize_status") == "failed")
+    log.info(f"  Pending summarization: {len(pending)}"
+             + (f"  ({retrying} retries of earlier failures)" if retrying else ""))
 
     if not pending:
         log.info("  Nothing to summarize.")
@@ -225,37 +145,77 @@ def summarize_articles() -> tuple:
     consecutive_fails = 0
     MAX_CONSECUTIVE   = 5
 
-    for i, article in enumerate(pending, 1):
-        article_id = article["article_id"]
-        title      = article.get("title", "")
-        text       = article.get("article_text") or article.get("rss_description", "")
+    # Articles are independent, so they are summarized concurrently in batches.
+    # Batching (rather than one big submit) keeps the quota-fallback switch and the
+    # consecutive-failure circuit breaker meaningful: each batch sees the provider
+    # chosen by the previous one, and results are applied in submission order.
+    workers = max(1, min(LLM_MAX_WORKERS, len(pending)))
+    log.info(f"  Concurrency: {workers} workers")
 
-        log.info(f"  [{i:3}/{len(pending)}] {title[:65]}")
+    def _article_text(a):
+        return a.get("article_text") or a.get("rss_description", "")
 
-        summary = summarize_article(active_client, title, text, provider=active_provider)
-
-        # Gemini quota exhausted — switch to Anthropic and retry this article
-        if summary is QUOTA_EXHAUSTED and not fallback_triggered and active_provider == "gemini":
-            log.warning("  ⚠  Gemini quota exhausted — switching to Anthropic fallback for this run")
-            active_client      = _make_client("anthropic")
-            active_provider    = "anthropic"
-            fallback_triggered = True
-            summary = summarize_article(active_client, title, text, provider="anthropic")
-
-        if summary and summary is not QUOTA_EXHAUSTED:
-            row_by_id[article_id]["summary_ai"]       = summary
-            row_by_id[article_id]["summarize_status"] = "success"
-            log.info(f"         ✓  {summary[:80]}...")
-            success_count    += 1
-            consecutive_fails = 0
-        else:
-            row_by_id[article_id]["summarize_status"] = "failed"
-            log.warning(f"         ✗  Summarization failed")
-            failed_count      += 1
-            consecutive_fails += 1
-            if consecutive_fails >= MAX_CONSECUTIVE:
-                log.error(f"  {MAX_CONSECUTIVE} consecutive failures — quota likely exhausted. Stopping.")
+    stop = False
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        for batch_start in range(0, len(pending), workers):
+            if stop:
                 break
+            batch = pending[batch_start:batch_start + workers]
+
+            client, provider = active_client, active_provider
+            results = list(pool.map(
+                lambda a: summarize_article(client, a.get("title", ""), _article_text(a),
+                                            provider=provider),
+                batch,
+            ))
+
+            # Gemini quota exhausted — switch provider once, then redo the affected rows
+            if (not fallback_triggered and active_provider == "gemini"
+                    and any(r is QUOTA_EXHAUSTED for r in results)):
+                log.warning("  ⚠  Gemini quota exhausted — switching to Anthropic fallback for this run")
+                active_client      = _make_client("anthropic")
+                active_provider    = "anthropic"
+                fallback_triggered = True
+                redo = [j for j, r in enumerate(results) if r is QUOTA_EXHAUSTED]
+                fb_client = active_client
+                retried = list(pool.map(
+                    lambda j: summarize_article(fb_client, batch[j].get("title", ""),
+                                                _article_text(batch[j]), provider="anthropic"),
+                    redo,
+                ))
+                for j, r in zip(redo, retried):
+                    results[j] = r
+
+            for offset, (article, summary) in enumerate(zip(batch, results)):
+                i          = batch_start + offset + 1
+                article_id = article["article_id"]
+                log.info(f"  [{i:3}/{len(pending)}] {article.get('title', '')[:65]}")
+
+                if summary and summary is not QUOTA_EXHAUSTED:
+                    row_by_id[article_id]["summary_ai"]       = summary
+                    row_by_id[article_id]["summarize_status"] = "success"
+                    log.info(f"         ✓  {summary[:80]}...")
+                    success_count    += 1
+                    consecutive_fails = 0
+                else:
+                    attempts = _attempts(row_by_id[article_id]) + 1
+                    row_by_id[article_id]["summarize_status"]   = "failed"
+                    row_by_id[article_id]["summarize_attempts"] = str(attempts)
+                    remaining = SUMMARIZE_MAX_ATTEMPTS - attempts
+                    log.warning(
+                        f"         ✗  Summarization failed "
+                        f"({'will retry' if remaining > 0 else 'giving up'}; "
+                        f"attempt {attempts}/{SUMMARIZE_MAX_ATTEMPTS})"
+                    )
+                    failed_count      += 1
+                    consecutive_fails += 1
+                    if consecutive_fails >= MAX_CONSECUTIVE:
+                        log.error(f"  {MAX_CONSECUTIVE} consecutive failures — quota likely exhausted. Stopping.")
+                        stop = True
+                        break
+
+            # Checkpoint after each batch so a crash doesn't lose completed work
+            save_staging(FILE_STAGED, list(row_by_id.values()))
 
     save_staging(FILE_STAGED, list(row_by_id.values()))
 

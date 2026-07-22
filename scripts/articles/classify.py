@@ -18,18 +18,14 @@ Or called by:
 """
 
 import csv
-import httpx
 import json
 import logging
-import os
-import re
 import sys
-import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from shutil import copy2
 
-from openai import OpenAI
 from sentence_transformers import SentenceTransformer
 import numpy as np
 
@@ -38,87 +34,21 @@ SCRIPT_DIR = Path(__file__).parent
 ROOT       = SCRIPT_DIR.parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 
+from articles._llm import QUOTA_EXHAUSTED, call_with_retries, make_client as _make_client
+from articles._staging import load_staging, save_staging
+from articles.dedup import DupIndex, _get_model as _get_dedup_model
 from utils.config import (
     FILE_STAGED, FILE_NEWS_FEED, FILE_DUPLICATE_CACHE,
     FILE_NEWS_FEED_ROLLING_BACKUP,
-    ARTICLES_MODEL, GEMINI_BASE_URL,
-    API_PROVIDER, ANTHROPIC_MODEL,
+    API_PROVIDER,
     SENTENCE_TRANSFORMER_MODEL,
     DUPLICATE_THRESHOLD, DUPLICATE_WINDOW_DAYS,
     CORE_FOOTPRINT, EXPANSION_MARKETS,
+    LLM_MAX_WORKERS,
 )
 
 # ── Logging ───────────────────────────────────────────────────────────────────
 log = logging.getLogger(__name__)
-# Reduce noisy transport-level request logs; keep stage-level logs visible.
-logging.getLogger("openai").setLevel(logging.WARNING)
-logging.getLogger("httpx").setLevel(logging.WARNING)
-logging.getLogger("httpcore").setLevel(logging.WARNING)
-
-# ── Quota sentinel ────────────────────────────────────────────────────────────
-QUOTA_EXHAUSTED = object()
-
-# ── SSL bypass (corporate network) ───────────────────────────────────────────
-_http_client = httpx.Client(verify=False)
-
-# ── Provider-agnostic client + call ──────────────────────────────────────────
-
-def _make_client(provider=None):
-    p = provider or API_PROVIDER
-    if p == "anthropic":
-        import anthropic
-        return anthropic.Anthropic(http_client=_http_client)
-    return OpenAI(
-        base_url=GEMINI_BASE_URL,
-        api_key=os.environ.get("GEMINI_API_KEY", ""),
-        http_client=_http_client,
-        max_retries=0,
-        timeout=60,
-    )
-
-
-def _is_rate_limit(e: Exception) -> bool:
-    return getattr(e, "status_code", None) == 429 or "RateLimitError" in type(e).__name__
-
-
-def _is_transient_http_error(e: Exception) -> bool:
-    status_code = getattr(e, "status_code", None)
-    if status_code in {408, 425, 429, 500, 502, 503, 504}:
-        return True
-
-    msg = str(e).lower()
-    transient_markers = (
-        "timed out",
-        "timeout",
-        "temporarily unavailable",
-        "service unavailable",
-        "connection reset",
-        "connection aborted",
-        "remote protocol error",
-    )
-    return any(marker in msg for marker in transient_markers)
-
-
-def _call_llm(client, system_prompt: str, user_content: str, max_tokens: int, provider=None) -> str:
-    p = provider or API_PROVIDER
-    if p == "anthropic":
-        import anthropic
-        response = client.messages.create(
-            model=ANTHROPIC_MODEL,
-            max_tokens=max_tokens,
-            system=system_prompt,
-            messages=[{"role": "user", "content": user_content}],
-        )
-        return response.content[0].text.strip()
-    response = client.chat.completions.create(
-        model=ARTICLES_MODEL,
-        max_tokens=max_tokens,
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user",   "content": user_content},
-        ],
-    )
-    return response.choices[0].message.content.strip()
 
 # ── Geography ─────────────────────────────────────────────────────────────────
 RELEVANT_STATES = CORE_FOOTPRINT | EXPANSION_MARKETS
@@ -271,15 +201,16 @@ def save_cache(path: Path, cache: dict) -> None:
         json.dump(cache, f, indent=2)
 
 
-_st_model = None
-
 def _get_st_model() -> SentenceTransformer:
-    global _st_model
-    if _st_model is None:
-        log.info(f"  Loading sentence-transformer model: {SENTENCE_TRANSFORMER_MODEL}")
-        _st_model = SentenceTransformer(SENTENCE_TRANSFORMER_MODEL)
-        log.info("  Model loaded.")
-    return _st_model
+    """
+    Reuse Stage 1.5's loader. That one tries local_files_only first, which is what
+    makes this work behind the corporate SSL intercept — a plain
+    SentenceTransformer(name) reaches out to huggingface.co and fails, which
+    silently disabled this backstop for 31 consecutive production runs.
+    Sharing the loader also avoids holding a second copy of the model in memory,
+    since run_articles.py runs Stage 1.5 and Stage 4 in the same process.
+    """
+    return _get_dedup_model()
 
 
 def st_embed(model: SentenceTransformer, text: str) -> list:
@@ -294,50 +225,18 @@ def classify_article(client, title: str, summary: str, provider=None):
     Returns classification dict, None on non-quota failure, or QUOTA_EXHAUSTED sentinel
     if all retries failed with rate-limit/billing errors.
     """
-    rate_limit_count = 0
-    for attempt in range(3):
-        try:
-            raw = _call_llm(client, SYSTEM_PROMPT, build_classification_prompt(title, summary), max_tokens=400, provider=provider)
-            raw = re.sub(r'^```(?:json)?\s*', '', raw)
-            raw = re.sub(r'\s*```$', '', raw).strip()
-            return json.loads(raw)
-        except json.JSONDecodeError as e:
-            log.warning(f"    JSON parse error (attempt {attempt + 1}): {e}")
-            time.sleep(5)
-        except Exception as e:
-            if _is_rate_limit(e):
-                rate_limit_count += 1
-                wait = 60 * (attempt + 1)
-                log.warning(f"    Rate limited (attempt {attempt + 1}): waiting {wait}s")
-            elif _is_transient_http_error(e):
-                wait = 5 * (attempt + 1)
-                log.info(f"    Transient HTTP error (attempt {attempt + 1}): retrying in {wait}s")
-            else:
-                wait = 10 * (attempt + 1)
-                log.warning(f"    LLM error (attempt {attempt + 1}): {str(e)[:80]} — waiting {wait}s")
-            time.sleep(wait)
-    if rate_limit_count == 3:
-        return QUOTA_EXHAUSTED
-    return None
+    return call_with_retries(
+        client,
+        SYSTEM_PROMPT,
+        build_classification_prompt(title, summary),
+        max_tokens=400,
+        provider=provider,
+        parse=json.loads,
+        label="Classify",
+    )
 
 
-# ── Staging / news feed helpers ───────────────────────────────────────────────
-
-def load_staging(path: Path) -> list:
-    if not path.exists():
-        return []
-    with open(path, newline="", encoding="utf-8") as f:
-        return list(csv.DictReader(f))
-
-
-def save_staging(path: Path, rows: list) -> None:
-    if not rows:
-        return
-    with open(path, "w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
-        writer.writeheader()
-        writer.writerows(rows)
-
+# ── News feed helpers ─────────────────────────────────────────────────────────
 
 def load_existing_news_feed_ids(path: Path) -> set:
     """Load article IDs already written to news_feed.csv."""
@@ -441,50 +340,63 @@ def classify_articles() -> tuple:
     MAX_CONSECUTIVE   = 5
     news_feed_rows    = []
 
+    # ── Phase 1: local work — skip already-written rows, then semantic dedup ──
+    # All CPU-local, so it runs up front: embeddings are computed in one batch and
+    # compared via a rolling matrix index instead of a per-article Python loop.
+    to_classify = []   # (index_in_pending, article) still needing an LLM call
+
+    candidates = []
     for i, article in enumerate(pending, 1):
+        article_id = article["article_id"]
+        # Skip if already written to news feed (checkpoint-style safety)
+        if article_id in existing_ids:
+            row_by_id[article_id]["classify_status"] = "success"
+            log.info(f"  [{i:3}/{len(pending)}] {article.get('title', '')[:65]}")
+            log.info(f"         ↩  Already in news_feed — skipping")
+            continue
+        candidates.append((i, article))
+
+    embeddings = {}
+    if st_model is not None and candidates:
+        try:
+            texts = [f"{a.get('title', '')} {a.get('summary_ai', '')}" for _, a in candidates]
+            vecs  = st_model.encode(texts, batch_size=32, show_progress_bar=False)
+            embeddings = {a["article_id"]: vecs[k] for k, (_, a) in enumerate(candidates)}
+        except Exception as e:
+            log.warning(f"  Batch embedding failed ({type(e).__name__}: {e}); "
+                        f"proceeding without dedup backstop")
+
+    dup_index = DupIndex(cache, extra_capacity=len(candidates)) if embeddings else None
+
+    for i, article in candidates:
         article_id = article["article_id"]
         title      = article.get("title", "")
         summary    = article.get("summary_ai", "")
 
-        log.info(f"  [{i:3}/{len(pending)}] {title[:65]}")
-
-        # Skip if already written to news feed (checkpoint-style safety)
-        if article_id in existing_ids:
-            row_by_id[article_id]["classify_status"] = "success"
-            log.info(f"         ↩  Already in news_feed — skipping")
-            continue
-
-        # --- Duplicate detection ---
         is_dup    = False
         dup_of_id = ""
+        embedding = embeddings.get(article_id)
 
-        if st_model is not None:
-            embed_text = f"{title} {summary}"
-            try:
-                embedding = st_embed(st_model, embed_text)
-            except Exception as e:
-                embedding = None
-                log.warning(f"         Embedding error ({type(e).__name__}: {e}); proceeding without dedup for this article")
+        if embedding is not None and dup_index is not None:
+            cached_id, sim = dup_index.best_match(
+                embedding, DUPLICATE_THRESHOLD, exclude_id=article_id
+            )
+            if cached_id:
+                is_dup    = True
+                dup_of_id = cached_id
+                log.info(f"  [{i:3}/{len(pending)}] {title[:65]}")
+                log.info(f"         ⚠  DUPLICATE (sim={sim:.3f}) of {cached_id}")
+                log.info(f"         Original: {cache.get(cached_id, {}).get('title', '')[:60]}")
+                duplicate_count += 1
 
-            if embedding is not None:
-                for cached_id, cached in cache.items():
-                    if cached_id == article_id:
-                        continue  # never flag an article as a duplicate of itself
-                    sim = cosine_similarity(embedding, cached["embedding"])
-                    if sim >= DUPLICATE_THRESHOLD:
-                        is_dup    = True
-                        dup_of_id = cached_id
-                        log.info(f"         ⚠  DUPLICATE (sim={sim:.3f}) of {cached_id}")
-                        log.info(f"         Original: {cached['title'][:60]}")
-                        duplicate_count += 1
-                        break
-
-                # Add to rolling cache when embedding succeeded
-                cache[article_id] = {
-                    "date"     : datetime.now(timezone.utc).isoformat(),
-                    "title"    : title,
-                    "embedding": embedding,
-                }
+            # Add to rolling cache when embedding succeeded
+            emb_list = embedding.tolist() if hasattr(embedding, "tolist") else list(embedding)
+            cache[article_id] = {
+                "date"     : datetime.now(timezone.utc).isoformat(),
+                "title"    : title,
+                "embedding": emb_list,
+            }
+            dup_index.add(article_id, embedding)
 
         if is_dup:
             row_by_id[article_id]["classify_status"] = "success"
@@ -508,55 +420,91 @@ def classify_articles() -> tuple:
             })
             continue
 
-        # --- Classify ---
-        cl = classify_article(active_client, title, summary, provider=active_provider)
+        to_classify.append((i, article))
 
-        # Gemini quota exhausted — switch to Anthropic and retry this article
-        if cl is QUOTA_EXHAUSTED and not fallback_triggered and active_provider == "gemini":
-            log.warning("  ⚠  Gemini quota exhausted — switching to Anthropic fallback for this run")
-            active_client      = _make_client("anthropic")
-            active_provider    = "anthropic"
-            fallback_triggered = True
-            cl = classify_article(active_client, title, summary, provider="anthropic")
+    # ── Phase 2: network work — classify non-duplicates concurrently ─────────
+    # Batched so the quota-fallback switch and the consecutive-failure circuit
+    # breaker still behave as they did when this ran serially.
+    workers = max(1, min(LLM_MAX_WORKERS, len(to_classify))) if to_classify else 1
+    if to_classify:
+        log.info(f"  Classifying {len(to_classify)} articles — concurrency: {workers} workers")
 
-        if cl and cl is not QUOTA_EXHAUSTED:
-            classified_count  += 1
-            consecutive_fails  = 0
-            states_str = json.dumps(cl.get("states", []))
-            secondary_str = "; ".join(cl.get("secondary_categories", []))
-            log.info(f"         Primary:  {cl.get('primary_category', '')}")
-            log.info(f"         Strategy: {cl.get('strategy_alignment_score')}  "
-                     f"Relevance: {cl.get('relevance_score')}  "
-                     f"DC: {cl.get('mentions_specific_dc')}")
-            log.info(f"         States:   {cl.get('states', [])}")
-
-            row_by_id[article_id]["classify_status"] = "success"
-            news_feed_rows.append({
-                "ID"                      : article_id,
-                "Title"                   : title,
-                "CleanURL"                : article.get("clean_url", ""),
-                "Source"                  : article.get("source", ""),
-                "PublishedDate"           : article.get("published_date", ""),
-                "Summary_AI"              : summary,
-                "Primary_Category"        : cl.get("primary_category", ""),
-                "Secondary_Categories"    : secondary_str,
-                "States"                  : states_str,
-                "DC_ID"                   : "",   # populated later by transform_articles.py
-                "Is_Duplicate"            : "False",
-                "Duplicate_Of"            : "",
-                "Strategy_Alignment_Score": cl.get("strategy_alignment_score", ""),
-                "Relevance_Score"         : cl.get("relevance_score", ""),
-                "Mentions_Specific_DC"    : str(cl.get("mentions_specific_dc", False)),
-                "Article_Text"            : article.get("article_text", "")[:2000],
-            })
-        else:
-            failed_count      += 1
-            consecutive_fails += 1
-            row_by_id[article_id]["classify_status"] = "failed"
-            log.warning("         ✗  Classification failed")
-            if consecutive_fails >= MAX_CONSECUTIVE:
-                log.error(f"  {MAX_CONSECUTIVE} consecutive failures — daily quota likely exhausted. Stopping.")
+    stop = False
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        for batch_start in range(0, len(to_classify), workers):
+            if stop:
                 break
+            batch = to_classify[batch_start:batch_start + workers]
+
+            client, provider = active_client, active_provider
+            results = list(pool.map(
+                lambda pair: classify_article(client, pair[1].get("title", ""),
+                                              pair[1].get("summary_ai", ""), provider=provider),
+                batch,
+            ))
+
+            if (not fallback_triggered and active_provider == "gemini"
+                    and any(r is QUOTA_EXHAUSTED for r in results)):
+                log.warning("  ⚠  Gemini quota exhausted — switching to Anthropic fallback for this run")
+                active_client      = _make_client("anthropic")
+                active_provider    = "anthropic"
+                fallback_triggered = True
+                redo = [j for j, r in enumerate(results) if r is QUOTA_EXHAUSTED]
+                fb_client = active_client
+                retried = list(pool.map(
+                    lambda j: classify_article(fb_client, batch[j][1].get("title", ""),
+                                               batch[j][1].get("summary_ai", ""),
+                                               provider="anthropic"),
+                    redo,
+                ))
+                for j, r in zip(redo, retried):
+                    results[j] = r
+
+            for (i, article), cl in zip(batch, results):
+                article_id = article["article_id"]
+                title      = article.get("title", "")
+                summary    = article.get("summary_ai", "")
+                log.info(f"  [{i:3}/{len(pending)}] {title[:65]}")
+
+                if cl and cl is not QUOTA_EXHAUSTED:
+                    classified_count  += 1
+                    consecutive_fails  = 0
+                    states_str = json.dumps(cl.get("states", []))
+                    secondary_str = "; ".join(cl.get("secondary_categories", []))
+                    log.info(f"         Primary:  {cl.get('primary_category', '')}")
+                    log.info(f"         Strategy: {cl.get('strategy_alignment_score')}  "
+                             f"Relevance: {cl.get('relevance_score')}  "
+                             f"DC: {cl.get('mentions_specific_dc')}")
+                    log.info(f"         States:   {cl.get('states', [])}")
+
+                    row_by_id[article_id]["classify_status"] = "success"
+                    news_feed_rows.append({
+                        "ID"                      : article_id,
+                        "Title"                   : title,
+                        "CleanURL"                : article.get("clean_url", ""),
+                        "Source"                  : article.get("source", ""),
+                        "PublishedDate"           : article.get("published_date", ""),
+                        "Summary_AI"              : summary,
+                        "Primary_Category"        : cl.get("primary_category", ""),
+                        "Secondary_Categories"    : secondary_str,
+                        "States"                  : states_str,
+                        "DC_ID"                   : "",   # populated later by transform_articles.py
+                        "Is_Duplicate"            : "False",
+                        "Duplicate_Of"            : "",
+                        "Strategy_Alignment_Score": cl.get("strategy_alignment_score", ""),
+                        "Relevance_Score"         : cl.get("relevance_score", ""),
+                        "Mentions_Specific_DC"    : str(cl.get("mentions_specific_dc", False)),
+                        "Article_Text"            : article.get("article_text", "")[:2000],
+                    })
+                else:
+                    failed_count      += 1
+                    consecutive_fails += 1
+                    row_by_id[article_id]["classify_status"] = "failed"
+                    log.warning("         ✗  Classification failed")
+                    if consecutive_fails >= MAX_CONSECUTIVE:
+                        log.error(f"  {MAX_CONSECUTIVE} consecutive failures — daily quota likely exhausted. Stopping.")
+                        stop = True
+                        break
 
     # Write results
     refresh_rolling_news_feed_backup(FILE_NEWS_FEED, FILE_NEWS_FEED_ROLLING_BACKUP)

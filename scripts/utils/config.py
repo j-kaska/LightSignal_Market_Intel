@@ -21,8 +21,6 @@ load_dotenv()
 # PROJECT IDENTITY
 # ═══════════════════════════════════════════════════════════════════════════════
 
-PROJECT_NAME        = "LightSignal"
-KMZ_DISPLAY_NAME    = "LightSignal Market Intelligence"
 KMZ_OUTPUT_FILENAME = "LightSignal.kmz"
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -51,7 +49,6 @@ FILE_ARTICLES_DC        = PROCESSED_DIR / "articles_dc_linked.csv"
 FILE_ARTICLES_STATE     = PROCESSED_DIR / "articles_state_linked.csv"
 FILE_STATE_CENTROIDS    = PROCESSED_DIR / "state_centroids.csv"
 FILE_PUSHBACK_CLEAN     = PROCESSED_DIR / "dc_pushback_clean.csv"
-FILE_PUSHBACK_H3        = PROCESSED_DIR / "h3_pushback_heatmap.csv"
 
 H3_DIR                  = PROCESSED_DIR / "h3"
 FILE_H3_R3              = H3_DIR / "h3_r3.csv"
@@ -80,7 +77,6 @@ FILE_NEWS_FEED_ROLLING_BACKUP = ARCHIVE_DIR / "news_feed_latest.csv"
 
 # ── Output ────────────────────────────────────────────────────────────────────
 OUTPUT_LATEST_DIR       = ROOT / "output" / "latest"
-OUTPUT_ARCHIVE_DIR      = ROOT / "output" / "archive"
 FILE_KMZ_LATEST         = OUTPUT_LATEST_DIR / KMZ_OUTPUT_FILENAME
 OUTPUT_NEWSLETTERS_DIR  = ROOT / "output" / "newsletters"
 
@@ -112,6 +108,23 @@ ARTICLES_MODEL              = "gemini-2.5-flash-lite"
 GEMINI_BASE_URL             = "https://generativelanguage.googleapis.com/v1beta/openai/"
 
 ANTHROPIC_MODEL             = "claude-haiku-4-5-20251001"
+
+# Summarize/classify are independent per-article network calls, so they run
+# concurrently. Gemini frequently returns 503 "model overloaded"; concurrency lets
+# those backoffs overlap instead of stacking up serially.
+# Lower this if you start seeing 429s.
+LLM_MAX_WORKERS             = int(os.environ.get("LIGHTSIGNAL_LLM_WORKERS", "8"))
+# SDK-level retries for 5xx/429. The SDK uses fast jittered backoff (sub-second),
+# which absorbs transient 503s far more cheaply than the stage-level retry loop.
+LLM_SDK_RETRIES             = 2
+
+# A summarize failure used to be terminal: summarize_status stayed "failed",
+# classify_status stayed "pending" forever, and _prune_staged (which only removes
+# classify_status="success" rows) could never clear them. A Gemini outage on
+# 2026-04-21..28 stranded 1,138 articles this way — they never reached the
+# dashboard. Failed rows are now retried automatically on later runs, up to this
+# many attempts, so a transient outage heals itself instead of losing a week.
+SUMMARIZE_MAX_ATTEMPTS      = 3
 
 SENTENCE_TRANSFORMER_MODEL  = "all-MiniLM-L6-v2"
 
@@ -154,7 +167,6 @@ SUMMARY_EMAIL_TO         = ""     # e.g. "jkaska@yourcompany.com" — leave blan
 SUMMARY_EMAIL_FROM       = ""     # leave blank to use default Outlook account
 
 # ── Docs ──────────────────────────────────────────────────────────────────────
-DOCS_DIR                = ROOT / "docs"
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # DATA CENTER FIELD NAMES  (dc_consolidated.csv)
@@ -180,21 +192,13 @@ DC_FIELD_LON            = "longitude"
 # DC PUSHBACK FIELD NAMES  (dc_pushback.csv)
 # ═══════════════════════════════════════════════════════════════════════════════
 
-PUSHBACK_FIELD_DATE              = "date"
-PUSHBACK_FIELD_JURISDICTION      = "jurisdiction"
-PUSHBACK_FIELD_STATE             = "state"
-PUSHBACK_FIELD_COUNTY            = "county"
-PUSHBACK_FIELD_SCOPE             = "scope"
 PUSHBACK_FIELD_ACTION_TYPE       = "action_type"
 PUSHBACK_FIELD_ISSUE_CATEGORY    = "issue_category"
-PUSHBACK_FIELD_OBJECTIVE         = "objective"
-PUSHBACK_FIELD_AUTHORITY_LEVEL   = "authority_level"
 PUSHBACK_FIELD_STATUS            = "status"
 PUSHBACK_FIELD_COMMUNITY_OUTCOME = "community_outcome"
 PUSHBACK_FIELD_DEVELOPMENT_OUTCOME = "development_outcome"
 
 # Canonical action_type labels from dashboard picklist
-PUSHBACK_ACTION_ALL              = "All Actions"
 PUSHBACK_ACTION_ZONING           = "Zoning Restriction"
 PUSHBACK_ACTION_LEGISLATION      = "Legislation"
 PUSHBACK_ACTION_MORATORIUM       = "Moratorium"
@@ -206,7 +210,6 @@ PUSHBACK_ACTION_EXEC_ORDER       = "Executive Order"
 PUSHBACK_ACTION_OTHER            = "Other"
 
 # Canonical issue_category labels from dashboard picklist
-PUSHBACK_ISSUE_ALL                = "All Issues"
 PUSHBACK_ISSUE_ZONING_LAND_USE    = "Zoning / Land Use"
 PUSHBACK_ISSUE_WATER              = "Water"
 PUSHBACK_ISSUE_ENVIRONMENTAL      = "Environmental"
@@ -224,7 +227,6 @@ PUSHBACK_ISSUE_ANTI_AI            = "Anti-AI"
 PUSHBACK_ISSUE_OTHER              = "Other"
 
 # Canonical status labels from dashboard picklist (from development perspective)
-PUSHBACK_STATUS_ALL                    = "All"
 PUSHBACK_STATUS_PENDING                = "Pending"
 PUSHBACK_STATUS_RESOLVED_FAVORABLE     = "Resolved - Favorable for Development"
 PUSHBACK_STATUS_RESOLVED_UNFAVORABLE   = "Resolved - Unfavorable for Development"
@@ -285,11 +287,6 @@ DC_STATUS_CLOSED            = "Closed"
 DC_PIPELINE_STATUSES = [DC_STATUS_UNDER_CONSTRUCTION, DC_STATUS_PLANNED]
 
 # Company type values (after parsing JSON wrapper)
-DC_COMPANY_HYPERSCALE       = "Hyperscale"
-DC_COMPANY_CARRIER_NEUTRAL  = "Carrier Neutral/Real Estate"
-DC_COMPANY_CARRIER_MOBILE   = "Carrier/Mobile/MSO"
-DC_COMPANY_ENTERPRISE       = "Enterprise/Other"
-DC_COMPANY_MINER            = "Miner"
 DC_COMPANY_UNCLASSIFIED     = "Unclassified"   # blank in source → normalized to this
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -298,18 +295,14 @@ DC_COMPANY_UNCLASSIFIED     = "Unclassified"   # blank in source → normalized 
 
 EIA_SHEET_OPERATING         = "Operating"
 EIA_SHEET_PLANNED           = "Planned"
-EIA_HEADER_ROW              = 2     # 1-indexed; row 1 is title, row 2 is blank, row 3 is headers
                                     # openpyxl skiprows handled in transform script
 
-EIA_FIELD_ENTITY_ID         = "Entity ID"
-EIA_FIELD_ENTITY_NAME       = "Entity Name"
 EIA_FIELD_PLANT_ID          = "Plant ID"
 EIA_FIELD_PLANT_NAME        = "Plant Name"
 EIA_FIELD_STATE             = "Plant State"
 EIA_FIELD_COUNTY            = "County"
 EIA_FIELD_NAMEPLATE_MW      = "Nameplate Capacity (MW)"
 EIA_FIELD_TECHNOLOGY        = "Technology"
-EIA_FIELD_ENERGY_SOURCE     = "Energy Source Code"
 EIA_FIELD_STATUS            = "Status"
 EIA_FIELD_LAT               = "Latitude"
 EIA_FIELD_LON               = "Longitude"
@@ -377,18 +370,12 @@ ART_FIELD_DUPLICATE     = "Is_Duplicate"
 # Additional article fields written by the article pipeline
 ART_FIELD_STRATEGY_SCORE  = "Strategy_Alignment_Score"
 ART_FIELD_RELEVANCE_SCORE = "Relevance_Score"
-ART_FIELD_MENTIONS_DC     = "Mentions_Specific_DC"
 ART_FIELD_IS_DUPLICATE    = "Is_Duplicate"
-ART_FIELD_DUPLICATE_OF    = "Duplicate_Of"
-ART_FIELD_ARTICLE_TEXT    = "Article_Text"
-ART_FIELD_CLEAN_URL       = "CleanURL"
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # BUILD COST / HEX FIELD NAMES  (hex_master_r6.csv)
 # ═══════════════════════════════════════════════════════════════════════════════
 
-HEX_FIELD_ID            = "h3_r6"
-HEX_FIELD_SOIL_MULT     = "soil_soil_multiplier"
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # H3 SETTINGS
@@ -421,9 +408,6 @@ H3_COL_BC_PCT               = "bc_pct"   # INVERTED: easy terrain = high score
 H3_COL_IS_ZERO          = "is_zero"    # True if dc_total_mw=0 AND pp_total_mw=0
 
 # Composite score columns
-H3_COL_COMPOSITE_OPERATIONAL    = "composite_operational"
-H3_COL_COMPOSITE_PIPELINE       = "composite_pipeline"
-H3_COL_COMPOSITE_TOTAL          = "composite_total"
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # COMPOSITE SCORING WEIGHTS
@@ -441,26 +425,6 @@ assert abs(WEIGHT_DC + WEIGHT_PP + WEIGHT_BC - 1.0) < 1e-9, \
     "Composite weights must sum to 1.0"
 
 # Composite definitions: (display_name, dc_pct_col, pp_pct_col, output_col)
-COMPOSITE_DEFINITIONS = [
-    (
-        "Today's Landscape",
-        H3_COL_DC_OPERATIONAL_PCT,
-        H3_COL_PP_OPERATIONAL_PCT,
-        H3_COL_COMPOSITE_OPERATIONAL,
-    ),
-    (
-        "Where Growth Is Heading",
-        H3_COL_DC_PIPELINE_PCT,
-        H3_COL_PP_PLANNED_PCT,
-        H3_COL_COMPOSITE_PIPELINE,
-    ),
-    (
-        "Full Picture",
-        H3_COL_DC_TOTAL_PCT,
-        H3_COL_PP_TOTAL_PCT,
-        H3_COL_COMPOSITE_TOTAL,
-    ),
-]
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # BORE COST FORMULA CONSTANTS
@@ -578,23 +542,7 @@ PUSHBACK_HEATMAP_COLORS = [
 # Google Earth compatible PNG filenames (to be placed in a /icons/ folder
 # inside the KMZ archive). Shapes TBD — placeholder names below.
 
-DC_COMPANY_ICONS = {
-    DC_COMPANY_UNCLASSIFIED:    "dc_circle.png",
-    DC_COMPANY_CARRIER_NEUTRAL: "dc_square.png",
-    DC_COMPANY_HYPERSCALE:      "dc_star.png",
-    DC_COMPANY_CARRIER_MOBILE:  "dc_diamond.png",
-    DC_COMPANY_MINER:           "dc_triangle.png",
-    DC_COMPANY_ENTERPRISE:      "dc_pentagon.png",
-}
 
-PP_TECH_ICONS = {
-    "Natural Gas":      "pp_triangle.png",
-    "Solar":            "pp_star.png",
-    "Wind":             "pp_chevron.png",
-    "Coal":             "pp_square.png",
-    "Nuclear":          "pp_hexagon.png",
-    "Other/Storage":    "pp_diamond.png",
-}
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # STATE CENTROIDS  (approximate geographic centers for article dot layer)

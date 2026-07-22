@@ -22,21 +22,16 @@ Or called by:
   python scripts/articles/run_articles.py
 """
 
-import csv
 import logging
-import re
 import sys
 import time
-from datetime import datetime, timezone
 from pathlib import Path
 
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException, WebDriverException
+from selenium.common.exceptions import TimeoutException
 
 # ── Path setup ────────────────────────────────────────────────────────────────
 SCRIPT_DIR = Path(__file__).parent
@@ -45,20 +40,21 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 from urllib.parse import urlparse
 
+from articles._staging import load_staging, save_staging
 from utils.config import FILE_STAGED, BLOCKED_SOURCE_DOMAINS
 
 # ── Logging ───────────────────────────────────────────────────────────────────
 log = logging.getLogger(__name__)
 
 # ── Settings ──────────────────────────────────────────────────────────────────
-PAGE_LOAD_TIMEOUT   = 15      # seconds to wait for page load (reduced from 30)
-TEXT_WAIT_TIMEOUT   = 8       # seconds to wait for body text to appear (reduced from 10)
-DELAY_BETWEEN       = 2       # seconds between articles (be polite)
-MAX_RETRIES         = 3       # retries per article before marking failed (increased from 1)
-MAX_CONSECUTIVE_FAILS = 3     # restart browser after this many consecutive failures (reduced from 5)
+PAGE_LOAD_TIMEOUT   = 15      # seconds to wait for page load
+TEXT_WAIT_TIMEOUT   = 8       # seconds to wait for body text to appear
+DELAY_BETWEEN       = 1.5     # seconds between articles (be polite)
+MAX_RETRIES         = 1       # retries per article before marking failed
+MAX_CONSECUTIVE_FAILS = 3     # restart browser after this many consecutive failures
 RESTART_EVERY       = 30      # proactively restart browser every N articles to avoid stale sessions
 MIN_TEXT_LENGTH     = 200     # minimum chars to consider extraction successful
-SAVE_INTERVAL       = 5       # save staging CSV every N articles (crash safety, reduced from 10)
+SAVE_INTERVAL       = 10      # save staging CSV every N articles (crash safety)
 
 # Article content selectors — tried in order, first match wins
 ARTICLE_SELECTORS = [
@@ -133,56 +129,67 @@ def make_driver() -> webdriver.Chrome:
     })
     driver = webdriver.Chrome(options=opts)
     driver.set_page_load_timeout(PAGE_LOAD_TIMEOUT)
-    driver.implicitly_wait(5)  # Add implicit wait
+    driver.set_script_timeout(20)
+    # NOTE: do NOT set an implicit wait. extract_text() probes ~23 CSS selectors,
+    # most of which legitimately match nothing on any given page. With an implicit
+    # wait every miss blocks for the full duration, which cost ~60s per article
+    # (measured) for zero extra text. Explicit waits below cover the real need.
     return driver
 
 
 # ── Text extraction ───────────────────────────────────────────────────────────
 
+# Noise removal + article-selector probing, done in one in-page script instead of
+# ~23 WebDriver round trips plus one per removed element. Returns the INDEX of the
+# winning article selector (or -1 for "fall back to body") rather than the text
+# itself: innerText and Selenium's .text disagree by ~10% on some pages, so the
+# actual text is still read through Selenium to keep extraction byte-identical.
+_PREPARE_JS = """
+const [noiseSelectors, articleSelectors, minLen] = arguments;
+for (const sel of noiseSelectors) {
+  for (const el of document.querySelectorAll(sel)) {
+    if (el.parentNode) el.parentNode.removeChild(el);
+  }
+}
+for (let i = 0; i < articleSelectors.length; i++) {
+  const el = document.querySelector(articleSelectors[i]);
+  if (el && (el.innerText || '').trim().length >= minLen) return i;
+}
+return -1;
+"""
+
+
 def extract_text(driver: webdriver.Chrome) -> str:
     """
     Extract article body text from the current page.
-    Tries article-specific selectors first, falls back to body.
-    Removes known noise elements before extracting text.
+    Strips noise elements and picks the best article container in a single in-page
+    script, then reads that one element's text through Selenium.
     """
-    # Try removing noise elements first
-    for sel in NOISE_SELECTORS:
-        try:
-            elements = driver.find_elements(By.CSS_SELECTOR, sel)
-            for el in elements:
-                driver.execute_script(
-                    "arguments[0].parentNode && arguments[0].parentNode.removeChild(arguments[0]);",
-                    el
-                )
-        except Exception as e:
-            # If the browser session is dead, let caller restart immediately.
-            if is_driver_dead(e):
-                raise
-            pass
+    try:
+        idx = driver.execute_script(
+            _PREPARE_JS, NOISE_SELECTORS, ARTICLE_SELECTORS, MIN_TEXT_LENGTH
+        )
+    except Exception as e:
+        # If the browser session is dead, let caller restart immediately.
+        if is_driver_dead(e):
+            raise
+        return ""
 
-    # Try article-specific selectors
-    for sel in ARTICLE_SELECTORS:
-        try:
-            els = driver.find_elements(By.CSS_SELECTOR, sel)
+    try:
+        if idx is not None and idx >= 0:
+            els = driver.find_elements(By.CSS_SELECTOR, ARTICLE_SELECTORS[idx])
             if els:
                 text = els[0].text.strip()
                 if len(text) >= MIN_TEXT_LENGTH:
                     return clean_text(text)
-        except Exception as e:
-            if is_driver_dead(e):
-                raise
-            continue
 
-    # Fallback: full body
-    try:
-        body = driver.find_element(By.TAG_NAME, "body")
-        text = body.text.strip()
+        # Fallback: full body
+        text = driver.find_element(By.TAG_NAME, "body").text.strip()
         if len(text) >= MIN_TEXT_LENGTH:
             return clean_text(text)
     except Exception as e:
         if is_driver_dead(e):
             raise
-        pass
 
     return ""
 
@@ -205,27 +212,6 @@ def clean_text(text: str) -> str:
             continue
         cleaned.append(line)
     return "\n".join(cleaned)
-
-
-# ── Staging file helpers ──────────────────────────────────────────────────────
-
-def load_staging(path: Path) -> list:
-    """Load all rows from staged_articles.csv."""
-    if not path.exists():
-        return []
-    with open(path, newline="", encoding="utf-8") as f:
-        return list(csv.DictReader(f))
-
-
-def save_staging(path: Path, rows: list) -> None:
-    """Write all rows back to staged_articles.csv."""
-    if not rows:
-        return
-    fieldnames = list(rows[0].keys())
-    with open(path, "w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames)
-        writer.writeheader()
-        writer.writerows(rows)
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────

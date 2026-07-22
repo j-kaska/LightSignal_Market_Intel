@@ -128,6 +128,36 @@ def _prune_staged(path: Path, retention_days: int = 30) -> None:
                  f"({len(rows)} remaining)")
 
 
+def _prune_logs(log_dir: Path, retention_days: int = 90) -> None:
+    """
+    Delete run logs older than retention_days.
+
+    Logs accumulated unbounded since 2026-02-23 (157 files). The window is
+    deliberately generous — per-run logs are the only record of stage timings,
+    and comparing months-old runs is how the July extraction regression was
+    found — but it still bounds growth.
+    """
+    if not log_dir.exists():
+        return
+    cutoff = datetime.now() - timedelta(days=retention_days)
+    removed = 0
+    for f in log_dir.glob("*_articles.log"):
+        try:
+            stamp = datetime.strptime(f.name[:16], "%Y-%m-%d_%H-%M")
+        except ValueError:
+            continue          # unrecognized name — leave it alone
+        if stamp < cutoff:
+            try:
+                f.unlink()
+                removed += 1
+            except OSError:
+                pass
+    if removed:
+        logging.getLogger(__name__).info(
+            f"  Logs: pruned {removed} run logs older than {retention_days}d"
+        )
+
+
 def get_unprocessed_ids() -> set:
     """Return article IDs where Processed != Yes."""
     if not FILE_STAGED.exists():
@@ -263,6 +293,7 @@ def main():
             mark_processed(newly_processed)
 
     _prune_staged(FILE_STAGED, retention_days=30)
+    _prune_logs(ARTICLES_LOG_DIR, retention_days=90)
     _finish(log, start, log_path, errors, args)
 
 

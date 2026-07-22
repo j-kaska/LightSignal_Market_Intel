@@ -51,6 +51,7 @@ SCRIPT_DIR = Path(__file__).parent
 ROOT       = SCRIPT_DIR.parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 
+from articles._staging import load_staging, save_staging
 from utils.config import (
     FILE_STAGED, FILE_NEWS_FEED, FILE_DUPLICATE_CACHE, FILE_TITLE_CACHE,
     FILE_SEEN_CLEAN_URLS,
@@ -120,6 +121,58 @@ def cosine_similarity(a, b) -> float:
     va, vb = np.array(a), np.array(b)
     norm = np.linalg.norm(va) * np.linalg.norm(vb)
     return float(np.dot(va, vb) / norm) if norm > 0 else 0.0
+
+
+class DupIndex:
+    """
+    Rolling cosine-similarity index over an embedding cache.
+
+    Replaces the per-article Python loop over every cached embedding (which
+    re-allocated two numpy arrays per comparison) with a single matrix-vector
+    product against pre-normalized rows. Matches the old semantics: the first
+    cache entry in insertion order at or above the threshold wins.
+
+    Shared by Stage 1.5 (dedup) and Stage 4 (classify).
+    """
+
+    def __init__(self, cache: dict, extra_capacity: int = 0):
+        self.ids = list(cache.keys())
+        rows = [np.asarray(cache[cid]["embedding"], dtype=np.float32) for cid in self.ids]
+        dim = rows[0].shape[0] if rows else 384
+        self._m = np.zeros((len(rows) + extra_capacity, dim), dtype=np.float32)
+        if rows:
+            self._m[:len(rows)] = np.vstack(rows)
+        self._n = len(rows)
+        # Pre-normalize so a match is a plain dot product
+        if self._n:
+            norms = np.linalg.norm(self._m[:self._n], axis=1, keepdims=True)
+            norms[norms == 0] = 1.0
+            self._m[:self._n] /= norms
+
+    def best_match(self, embedding, threshold: float, exclude_id: str = ""):
+        """Return (cached_id, similarity) of the first match >= threshold, else (None, 0.0)."""
+        if self._n == 0:
+            return None, 0.0
+        v = np.asarray(embedding, dtype=np.float32)
+        nv = np.linalg.norm(v)
+        if nv == 0:
+            return None, 0.0
+        sims = self._m[:self._n] @ (v / nv)
+        for idx in np.flatnonzero(sims >= threshold):
+            if self.ids[idx] != exclude_id:
+                return self.ids[idx], float(sims[idx])
+        return None, 0.0
+
+    def add(self, article_id: str, embedding) -> None:
+        v = np.asarray(embedding, dtype=np.float32)
+        nv = np.linalg.norm(v)
+        if nv == 0:
+            return
+        if self._n >= self._m.shape[0]:
+            self._m = np.vstack([self._m, np.zeros((1, self._m.shape[1]), dtype=np.float32)])
+        self._m[self._n] = v / nv
+        self.ids.append(article_id)
+        self._n += 1
 
 
 # ── Title cache ───────────────────────────────────────────────────────────────
@@ -193,22 +246,6 @@ NEWS_FEED_COLUMNS = [
 ]
 
 
-def load_staging(path: Path) -> list:
-    if not path.exists():
-        return []
-    with open(path, newline="", encoding="utf-8") as f:
-        return list(csv.DictReader(f))
-
-
-def save_staging(path: Path, rows: list) -> None:
-    if not rows:
-        return
-    with open(path, "w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
-        writer.writeheader()
-        writer.writerows(rows)
-
-
 def _load_existing_news_feed_ids(path: Path) -> set:
     if not path.exists():
         return set()
@@ -270,6 +307,11 @@ def dedup_articles() -> tuple:
     except Exception as e:
         log.warning(f"  Semantic embedding unavailable ({type(e).__name__}: {e}); running title-only dedup")
 
+    dup_index = (
+        DupIndex(embed_cache, extra_capacity=len(pending))
+        if embeddings is not None else None
+    )
+
     fuzzy_count    = 0
     semantic_count = 0
     non_dupe_count = 0
@@ -303,17 +345,15 @@ def dedup_articles() -> tuple:
                     break
 
         # Layer 2: semantic embedding (only if title check didn't flag it and model loaded)
-        if not is_dup and embedding is not None:
-            for cached_id, cached in embed_cache.items():
-                if cached_id == article_id:
-                    continue  # never flag an article as a duplicate of itself
-                sim = cosine_similarity(embedding, cached["embedding"])
-                if sim >= DUPLICATE_THRESHOLD:
-                    is_dup    = True
-                    dup_of_id = cached_id
-                    dup_layer = f"semantic (sim={sim:.3f})"
-                    semantic_count += 1
-                    break
+        if not is_dup and embedding is not None and dup_index is not None:
+            cached_id, sim = dup_index.best_match(
+                embedding, DUPLICATE_THRESHOLD, exclude_id=article_id
+            )
+            if cached_id:
+                is_dup    = True
+                dup_of_id = cached_id
+                dup_layer = f"semantic (sim={sim:.3f})"
+                semantic_count += 1
 
         if is_dup:
             log.info(f"  ⚠  DUP [{dup_layer}]  {title[:65]}")
@@ -356,6 +396,8 @@ def dedup_articles() -> tuple:
                     "title"    : title,
                     "embedding": embedding.tolist(),
                 }
+                if dup_index is not None:
+                    dup_index.add(article_id, embedding)
 
     save_staging(FILE_STAGED, list(row_by_id.values()))
     _save_title_cache(FILE_TITLE_CACHE, title_cache)
