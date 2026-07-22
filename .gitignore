@@ -1,38 +1,70 @@
-# Python
+# ══════════════════════════════════════════════════════════════════════════════
+# What belongs in this repo: source code, source data, and hand-curated labels.
+# What does not: anything a pipeline run can regenerate, and anything local to
+# one machine. Committing regenerated artifacts is what grew .git to 366 MB.
+# ══════════════════════════════════════════════════════════════════════════════
+
+# ── Python ────────────────────────────────────────────────────────────────────
 __pycache__/
 *.py[cod]
 *.pyo
 .env
 venv/
 .venv/
+# covers .venv-1 etc. — stray envs sync in via OneDrive
+.venv*/
+.pytest_cache/
 
-# LightSignal generated files — do not commit
+# ── Generated: intermediate data ──────────────────────────────────────────────
 data/processed/
 data/archive/
-data/articles/staging/seen_urls.json
-data/articles/staging/duplicate_cache.json
 data/articles/logs/
+data/articles/staging/seen_urls.json
+data/articles/staging/seen_clean_urls.json
+data/articles/staging/duplicate_cache.json
+data/articles/staging/title_cache.json
+data/articles/staging/staged_articles.csv
+!data/articles/staging/.gitkeep
+
+# One-off manual backups / rerun scratch. The bare-name patterns above did not
+# match these, which is how ~35 MB of them reached git.
+*_before_rerun*
+*_before_stage2rerun*
+rerun_*_ids_*.txt
+
+# ── Generated: audit caches and reports ───────────────────────────────────────
+# labels_snapshot.pkl is a frozen copy of news_feed_test_feedback.xlsx —
+# rebuild with: python scripts/audit/run_audit.py snapshot
+data/audit/cache/
+output/audit/*
+# append-only time series, not rebuildable
+!output/audit/metrics_history.jsonl
+
+# ── Generated: dashboard build output ─────────────────────────────────────────
+# Rebuilt by run_all.py on every run; index.html alone is ~13 MB per commit.
+output/latest/
 output/archive/
 scripts/kml/deckgl_bundle.js
 
-# Keep staging structure but not contents
-!data/articles/staging/.gitkeep
-data/articles/staging/staged_articles.csv
-data/articles/staging/title_cache.json
+# ── Kept deliberately (do NOT ignore) ─────────────────────────────────────────
+#   data/raw/inputs/                       source data + accumulated news_feed.csv
+#   data/articles/test/news_feed_test_feedback.xlsx   hand-labeled gold set
+#   output/newsletters/*.html              published deliverables
 
-# OS
+# ── Newsletter archive (older issues) ─────────────────────────────────────────
+output/newsletters/archive/
+
+# ── Local scratch / debugging scripts ─────────────────────────────────────────
+fix_*.py
+monitor_*.py
+pipeline_run_*.log
+
+# ── OS / editor ───────────────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
 desktop.ini
-
-# Logs
 *.log
-
-# Claude Code IDE settings — local only
 .claude/
 
-# Nested project copy — not part of this repo
+# ── Nested project copy — not part of this repo ───────────────────────────────
 LightSignal_Market_Intel/
-
-# Newsletter archive (older issues)
-output/newsletters/archive/
