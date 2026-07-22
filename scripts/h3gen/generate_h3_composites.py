@@ -13,7 +13,7 @@ Note: Composite scoring is now computed live in the dashboard.
       Users can adjust variable weights interactively without re-running the pipeline.
 
 Run directly:
-  python scripts/h3/generate_h3_composites.py
+  python scripts/h3gen/generate_h3_composites.py
 
 Or called automatically by:
   python scripts/run_all.py

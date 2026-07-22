@@ -22,7 +22,7 @@ Summary includes:
 import csv
 import logging
 import sys
-from collections import Counter, defaultdict
+from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -211,7 +211,6 @@ def render_html(s: dict) -> str:
 
     # Health color
     has_issues = s["extract_failed"] > 0 or s["pipeline_errors"] or s["classify_fail"] > 0
-    status_color = "#e74c3c" if has_issues else "#27ae60"
     status_text  = "⚠ Issues Detected" if has_issues else "✓ Clean Run"
 
     html = f"""

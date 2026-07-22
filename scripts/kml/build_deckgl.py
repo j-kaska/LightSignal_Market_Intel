@@ -37,8 +37,7 @@ from utils.config import (
     H3_COL_PP_OPERATIONAL_PCT, H3_COL_PP_PLANNED_PCT,  H3_COL_PP_TOTAL_PCT,
     H3_COL_BC_PCT,
     H3_COL_IS_ZERO,
-    DC_STATUS_COLORS, PP_STATUS_COLORS,
-    H3_COLOR_BUCKETS, COLOR_ZERO_HEX,
+    DC_STATUS_COLORS, H3_COLOR_BUCKETS, COLOR_ZERO_HEX,
     PP_FIELD_STATUS_LABEL,
     DC_STATUS_OPERATIONAL, DC_STATUS_UNDER_CONSTRUCTION,
     DC_STATUS_PLANNED, DC_STATUS_WITHDRAWN,
@@ -518,8 +517,11 @@ def build_deckgl():
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     bundle_out = OUTPUT_DIR / "lib.js"
     bundle_out.write_text(js_bundle, encoding="utf-8")
-    OUTPUT_HTML.write_text(_html(data_js), encoding="utf-8")
-    log.info(f"  Written index.html ({OUTPUT_HTML.stat().st_size/1_000_000:.1f} MB)")
+    data_out = OUTPUT_DIR / "data.js"
+    data_out.write_text(data_js, encoding="utf-8")
+    OUTPUT_HTML.write_text(_html(), encoding="utf-8")
+    log.info(f"  Written index.html ({OUTPUT_HTML.stat().st_size/1_000:.0f} KB)")
+    log.info(f"  Written data.js   ({data_out.stat().st_size/1_000_000:.1f} MB)")
     log.info(f"  Written lib.js    ({bundle_out.stat().st_size/1_000_000:.1f} MB)")
     log.info("Dashboard build complete.")
     log.info(f"  Open: {OUTPUT_HTML}")
@@ -528,7 +530,10 @@ def build_deckgl():
 # ══════════════════════════════════════════════════════════════════════
 # HTML TEMPLATE
 # ══════════════════════════════════════════════════════════════════════
-def _html(data_js):
+def _html():
+    # Data lives in data.js, not inlined here. Inlining made index.html ~13 MB,
+    # which the browser had to parse before first paint and which committed a
+    # fresh 13 MB blob to git on every run.
     return """\
 <!DOCTYPE html>
 <html lang="en">
@@ -900,8 +905,9 @@ body{background:#0d0d1a;font-family:'Segoe UI',Arial,sans-serif;color:#eee;overf
 <div id="infobar">LightSignal &nbsp;|&nbsp; Scroll to zoom &nbsp; Drag to pan &nbsp; Hover to inspect</div>
 
 <script src="lib.js"></script>
+<script src="data.js"></script>
 <script>
-""" + data_js + r"""
+""" + r"""
 const {DeckGL,H3HexagonLayer,ScatterplotLayer,HeatmapLayer,TileLayer,BitmapLayer} = deck;
 const TextLayer = deck.TextLayer || null; // graceful fallback
 

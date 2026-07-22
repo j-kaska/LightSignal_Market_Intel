@@ -14,7 +14,7 @@ The unit_cost_ft column uses the improved bore cost formula from Bore_Cost_LongH
   - Slope factor adjustment
 
 Run directly:
-  python scripts/h3/generate_h3_build_cost.py
+  python scripts/h3gen/generate_h3_build_cost.py
 
 Or called automatically by:
   python scripts/run_all.py

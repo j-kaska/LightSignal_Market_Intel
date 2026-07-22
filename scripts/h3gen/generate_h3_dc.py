@@ -12,7 +12,7 @@ If the h3_r*.csv files don't exist yet they are created. If they exist,
 DC columns are added/updated without disturbing other columns.
 
 Run directly:
-  python scripts/h3/generate_h3_dc.py
+  python scripts/h3gen/generate_h3_dc.py
 
 Or called automatically by:
   python scripts/run_all.py

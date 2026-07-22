@@ -1,15 +1,37 @@
-openai
-anthropic
-rapidfuzz
-sentence-transformers
-numpy
-openpyxl
-httpx
-feedparser
-selenium
-beautifulsoup4
-pandas
-requests
-h3
-pywin32
-python-dotenv
+# LightSignal Market Intel — pinned to the versions currently in .venv
+# (Python 3.14). Pinned deliberately: sentence-transformers pulls in torch, and
+# an unpinned rebuild of that stack is not reproducible.
+#
+# Install:  python -m pip install -r requirements.txt
+
+# ── LLM providers (Stage 3 summarize / Stage 4 classify) ──────────────────────
+openai==2.38.0
+anthropic==0.104.1
+httpx==0.28.1
+
+# ── Article ingestion ─────────────────────────────────────────────────────────
+feedparser==6.0.12
+selenium==4.44.0
+requests==2.34.2
+
+# ── Dedup (Stage 1.5 title fuzzy + semantic embedding) ────────────────────────
+rapidfuzz==3.14.5
+sentence-transformers==5.5.1
+
+# ── Transform / geo / output ──────────────────────────────────────────────────
+pandas==3.0.3
+numpy==2.4.6
+h3==4.4.2
+# pandas .xlsx engine — imported indirectly, keep
+openpyxl==3.1.5
+
+# ── Platform / config ─────────────────────────────────────────────────────────
+# Outlook summary email in articles/notify.py
+pywin32==311
+python-dotenv==1.2.2
+
+# ── Dev ───────────────────────────────────────────────────────────────────────
+pytest==9.1.1
+
+# Removed: beautifulsoup4 — no bs4 import anywhere in scripts/ (extraction uses
+# Selenium's DOM, not a parser).

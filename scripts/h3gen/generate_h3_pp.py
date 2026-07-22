@@ -10,7 +10,7 @@ aggregating nameplate_mw into three buckets per resolution:
 Results are written as columns into the consolidated h3_r*.csv files.
 
 Run directly:
-  python scripts/h3/generate_h3_pp.py
+  python scripts/h3gen/generate_h3_pp.py
 
 Or called automatically by:
   python scripts/run_all.py

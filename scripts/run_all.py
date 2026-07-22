@@ -36,7 +36,6 @@ from utils.config import (
     FILE_DC, FILE_ARTICLES, FILE_EIA, FILE_HEX, FILE_PUSHBACK,
     ARCHIVE_DIR,
     FILE_KMZ_LATEST,
-    KMZ_OUTPUT_FILENAME,
     SHAREPOINT_SYNC_PATH,
 )
 
@@ -154,44 +153,26 @@ def run_transforms():
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def run_h3_generation():
-    import importlib.util, sys as _sys
+    # The folder is h3gen/, not h3/, precisely so these are ordinary imports.
+    # While it was named h3/ it shadowed the installed h3 package whenever
+    # scripts/ was on sys.path, and this function needed ~25 lines of sys.path
+    # and sys.modules surgery to load its own scripts.
+    from h3gen.generate_h3_dc import generate_h3_dc
+    from h3gen.generate_h3_pp import generate_h3_pp
+    from h3gen.generate_h3_build_cost import generate_h3_build_cost
+    from h3gen.generate_h3_composites import generate_h3_composites
 
-    # scripts/h3/ shadows the real h3 library when 'scripts' is on sys.path.
-    # Temporarily remove 'scripts' from sys.path while loading h3 scripts so
-    # that `import h3` resolves to the installed package, not our folder.
-    scripts_path = str(ROOT / "scripts")
-    path_backup  = [p for p in _sys.path if p == scripts_path]
-    for p in path_backup:
-        _sys.path.remove(p)
+    log.info("  Running generate_h3_dc...")
+    generate_h3_dc()
 
-    # Remove any cached fake 'h3' module from previous import attempts
-    _sys.modules.pop("h3", None)
+    log.info("  Running generate_h3_pp...")
+    generate_h3_pp()
 
-    def load_h3_script(name):
-        """Loads a script from scripts/h3/ by path to avoid collision with the h3 library."""
-        path = ROOT / "scripts" / "h3" / f"{name}.py"
-        spec = importlib.util.spec_from_file_location(name, path)
-        mod  = importlib.util.module_from_spec(spec)
-        _sys.modules[name] = mod
-        spec.loader.exec_module(mod)
-        return mod
+    log.info("  Running generate_h3_build_cost...")
+    generate_h3_build_cost()
 
-    try:
-        log.info("  Running generate_h3_dc...")
-        load_h3_script("generate_h3_dc").generate_h3_dc()
-
-        log.info("  Running generate_h3_pp...")
-        load_h3_script("generate_h3_pp").generate_h3_pp()
-
-        log.info("  Running generate_h3_build_cost...")
-        load_h3_script("generate_h3_build_cost").generate_h3_build_cost()
-
-        log.info("  Running generate_h3_composites...")
-        load_h3_script("generate_h3_composites").generate_h3_composites()
-    finally:
-        # Restore scripts path so subsequent stages work normally
-        for p in path_backup:
-            _sys.path.insert(0, p)
+    log.info("  Running generate_h3_composites...")
+    generate_h3_composites()
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -267,9 +248,43 @@ Examples:
     parser.add_argument(
         "--publish",
         action="store_true",
-        help="After build, copy index.html + lib.js to SHAREPOINT_SYNC_PATH in config.py",
+        help="After build, copy index.html + data.js + lib.js to SHAREPOINT_SYNC_PATH in config.py",
     )
     return parser.parse_args()
+
+
+# ── Publish ───────────────────────────────────────────────────────────────────
+
+DASHBOARD_FILES = ("index.html", "data.js", "lib.js")
+
+
+def run_publish():
+    """
+    Copy the built dashboard to SHAREPOINT_SYNC_PATH.
+
+    This used to be a no-op: --publish was parsed but never read, so the flag
+    silently did nothing.
+    """
+    src_dir = ROOT / "output" / "latest" / "LightSignal"
+
+    if SHAREPOINT_SYNC_PATH is None:
+        log.warning("  --publish given but SHAREPOINT_SYNC_PATH is None in config.py — nothing published.")
+        return
+
+    dest_dir = Path(SHAREPOINT_SYNC_PATH)
+    if not dest_dir.exists():
+        log.error(f"  --publish: SHAREPOINT_SYNC_PATH does not exist: {dest_dir}")
+        return
+
+    for name in DASHBOARD_FILES:
+        src = src_dir / name
+        if not src.exists():
+            log.error(f"  --publish: missing build output {name} — dashboard would be broken. Aborting publish.")
+            return
+
+    for name in DASHBOARD_FILES:
+        shutil.copy2(src_dir / name, dest_dir / name)
+        log.info(f"    Published: {name} → {dest_dir / name}")
 
 
 def main():
@@ -328,6 +343,11 @@ def main():
     run_stage("Kepler Build", run_kepler_build)
     run_stage("DC KMZ",       run_dc_kmz_build)
 
+    # ── Stage 5: Publish (opt-in) ─────────────────────────────────────────────
+    if args.publish:
+        stage(5, "Publish to SharePoint")
+        run_stage("Publish", run_publish)
+
     # ── Done ──────────────────────────────────────────────────────────────────
     elapsed = datetime.now() - start_time
     minutes = int(elapsed.total_seconds() // 60)
@@ -339,17 +359,18 @@ def main():
     log.info(f"  Time elapsed: {minutes}m {seconds}s")
     log.info(f"  Output: {FILE_KMZ_LATEST}")
 
-    html_out = ROOT / "output" / "latest" / "LightSignal" / "index.html"
-    if html_out.exists():
-        size_mb = html_out.stat().st_size / 1_000_000
-        log.info(f"  HTML:   {size_mb:.1f} MB")
+    dash_dir = ROOT / "output" / "latest" / "LightSignal"
+    for name in ("index.html", "data.js", "lib.js"):
+        f = dash_dir / name
+        if f.exists():
+            log.info(f"  {name:<11}{f.stat().st_size/1_000_000:6.1f} MB")
 
     log.info("")
     log.info("  Open in Chrome or Firefox:")
-    log.info(f"  {ROOT / 'output' / 'latest' / 'LightSignal' / 'index.html'}")
+    log.info(f"  {dash_dir / 'index.html'}")
     log.info("")
-    log.info("  For SharePoint/Power BI: host the LightSignal/ folder")
-    log.info("  and reference index.html — both files required.")
+    log.info("  For SharePoint/Power BI: host the LightSignal/ folder and")
+    log.info("  reference index.html — index.html, data.js and lib.js are all required.")
     log.info("═" * 55)
 
 
