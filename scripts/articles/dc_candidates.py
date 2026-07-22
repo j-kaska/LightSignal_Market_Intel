@@ -22,11 +22,14 @@ Queue CSV columns:
   dc_id, canonical_name, operator, dc_state,
   confidence, match_method, matched_text, review_status
 
+This is a manual-assist tool, run on demand — it is deliberately NOT part of the
+daily run_articles.py pipeline. Fuzzy name matching recovers only a minority of
+DC linkages (measured ~16% recall@3 against human-reviewed ground truth) and
+still surfaces geographic false positives, so every row needs human judgement and
+it must never auto-write DC_ID.
+
 Run directly:
   python scripts/articles/dc_candidates.py
-
-Or called automatically by:
-  python scripts/articles/run_articles.py
 """
 
 import csv
@@ -58,6 +61,21 @@ QUEUE_COLUMNS = [
 # Top-N candidates per article (before queue cap)
 MAX_CANDIDATES_PER_ARTICLE = 3
 
+# A facility name must clear both to enter the match corpus (see load_dc_master).
+MIN_MATCH_NAME_LEN   = 8    # characters
+MIN_MATCH_NAME_TOKENS = 2   # words
+
+
+def _is_specific_name(name: str) -> bool:
+    """
+    True if a facility name is distinctive enough to match against free article
+    text without coincidental hits. Bare city names ("Miami") and short codes
+    ("MI1") fail this and are excluded — they matched any article mentioning the
+    word and dominated the false positives in testing.
+    """
+    name = (name or "").strip()
+    return len(name) >= MIN_MATCH_NAME_LEN and len(name.split()) >= MIN_MATCH_NAME_TOKENS
+
 
 # ── DC master helpers ─────────────────────────────────────────────────────────
 
@@ -83,12 +101,21 @@ def load_dc_master(dc_csv: Path) -> list:
             if not canonical:
                 continue
 
+            # Only match on specific facility names, and only names distinctive
+            # enough to be meaningful when found as a substring of article text.
+            #
+            #  - Operator was dropped: matching "Meta" or "Google" links the article
+            #    to an ARBITRARY facility of that operator, never the one the article
+            #    is actually about — it produced most of the noise in testing.
+            #  - Single-token names (bare cities like "Chicago", "Miami", or short
+            #    codes) match any article that happens to mention the word, so a
+            #    name must have >= 2 tokens AND >= MIN_MATCH_NAME_LEN characters.
             match_names: dict = {}
-            match_names[canonical] = "canonical"
-            if alias and alias != canonical:
-                match_names[alias] = "alias"
-            if operator and len(operator) > 3:
-                match_names[operator] = "operator"
+            for name, source in ((canonical, "canonical"), (alias, "alias")):
+                if source == "alias" and (not alias or alias == canonical):
+                    continue
+                if _is_specific_name(name):
+                    match_names[name] = source
 
             records.append({
                 "dc_id"         : asset_id,

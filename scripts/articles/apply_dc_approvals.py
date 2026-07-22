@@ -5,8 +5,8 @@ Applies human-reviewed DC linkages from dc_review_queue_approved.csv
 back into news_feed.csv.
 
 WORKFLOW:
-  1. After running run_articles.py (which calls dc_candidates.py),
-     review dc_review_queue.csv in Excel or any CSV editor.
+  1. Run dc_candidates.py on demand, then review dc_review_queue.csv in Excel
+     or any CSV editor.
   2. Copy approved rows to dc_review_queue_approved.csv and set:
        review_status = "approved"
      (Rejected rows: set review_status = "rejected" or simply omit them.)
