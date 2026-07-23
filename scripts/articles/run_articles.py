@@ -23,6 +23,12 @@ Usage:
   python scripts/articles/run_articles.py --skip-fetch    # stages 2-4 only
   python scripts/articles/run_articles.py --classify-only # stage 4 only
   python scripts/articles/run_articles.py --no-email      # skip summary email
+  python scripts/articles/run_articles.py --today-only    # LLM stages: today's articles only
+  python scripts/articles/run_articles.py --since 2026-07-20   # ...or from a given date
+
+--since / --today-only bound stages 3 and 4 to recently staged articles. Older
+rows that are still pending or retryable keep their status and wait for an
+unscoped run, so nothing is dropped — it is deferred.
 
 Logs: data/articles/logs/YYYY-MM-DD_HH-MM_articles.log
 """
@@ -206,7 +212,30 @@ def parse_args():
     parser.add_argument("--skip-fetch",    action="store_true", help="Skip Stage 1, run 2-4")
     parser.add_argument("--classify-only", action="store_true", help="Run Stage 4 only")
     parser.add_argument("--no-email",      action="store_true", help="Skip summary email")
-    return parser.parse_args()
+    parser.add_argument(
+        "--since", metavar="YYYY-MM-DD", default="",
+        help="Limit the LLM stages (3 and 4) to articles staged on or after this date. "
+             "Older pending/failed rows keep their status for a later unscoped run.",
+    )
+    parser.add_argument(
+        "--today-only", action="store_true",
+        help="Shorthand for --since <today>",
+    )
+    args = parser.parse_args()
+
+    if args.today_only:
+        today = datetime.now().strftime("%Y-%m-%d")
+        if args.since and args.since != today:
+            parser.error(f"--today-only conflicts with --since {args.since}")
+        args.since = today
+
+    if args.since:
+        try:
+            datetime.strptime(args.since, "%Y-%m-%d")
+        except ValueError:
+            parser.error(f"--since expects YYYY-MM-DD, got {args.since!r}")
+
+    return args
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
@@ -267,13 +296,13 @@ def main():
     # ── Stage 3: Summarize ────────────────────────────────────────────────────
     if not args.classify_only:
         from articles.summarize import summarize_articles
-        run_stage("Summarize", summarize_articles, errors)
+        run_stage("Summarize", lambda: summarize_articles(since=args.since), errors)
     else:
         log.info("  Stage 3: Summarize — skipped")
 
     # ── Stage 4: Classify ─────────────────────────────────────────────────────
     from articles.classify import classify_articles
-    run_stage("Classify", classify_articles, errors)
+    run_stage("Classify", lambda: classify_articles(since=args.since), errors)
 
     # ── Mark fully processed articles ─────────────────────────────────────────
     # An article is Processed = Yes when classify_status = success

@@ -34,8 +34,11 @@ SCRIPT_DIR = Path(__file__).parent
 ROOT       = SCRIPT_DIR.parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from articles._llm import QUOTA_EXHAUSTED, call_with_retries, make_client as _make_client
-from articles._staging import load_staging, save_staging
+from articles._llm import (
+    QUOTA_EXHAUSTED, PROVIDER_UNAVAILABLE,
+    call_with_retries, make_client as _make_client,
+)
+from articles._staging import load_staging, save_staging, staged_on_or_after
 from articles.dedup import DupIndex, _get_model as _get_dedup_model
 from utils.config import (
     FILE_STAGED, FILE_NEWS_FEED, FILE_DUPLICATE_CACHE,
@@ -297,25 +300,38 @@ def append_to_news_feed(path: Path, rows: list) -> None:
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 
-def classify_articles() -> tuple:
+def classify_articles(since: str = "") -> tuple:
     """
     Classify all pending articles, write results to news_feed.csv.
+
+    `since` (ISO YYYY-MM-DD) restricts the run to articles staged on or after
+    that date; older rows stay pending for a later unscoped run.
+
     Returns (classified_count, duplicate_count, failed_count).
     """
     log.info("=" * 60)
     log.info("  Stage 4: Classify Articles")
     log.info(f"  Provider: {API_PROVIDER}")
+    if since:
+        log.info(f"  Scope: articles staged on or after {since}")
     log.info("=" * 60)
 
-    rows    = load_staging(FILE_STAGED)
-    pending = [
-        r for r in rows
-        if r.get("classify_status") == "pending"
-        and r.get("summarize_status") == "success"
-        and r.get("summary_ai")
-    ]
+    rows = load_staging(FILE_STAGED)
+
+    def _ready(r) -> bool:
+        return (
+            r.get("classify_status") == "pending"
+            and r.get("summarize_status") == "success"
+            and r.get("summary_ai")
+        )
+
+    eligible = [r for r in rows if _ready(r)]
+    pending  = [r for r in staged_on_or_after(rows, since) if _ready(r)]
 
     log.info(f"  Pending classification: {len(pending)}")
+    deferred = len(eligible) - len(pending)
+    if deferred:
+        log.info(f"  Deferred by --since: {deferred} older articles left for a later run")
 
     if not pending:
         log.info("  Nothing to classify.")
@@ -466,7 +482,9 @@ def classify_articles() -> tuple:
                 summary    = article.get("summary_ai", "")
                 log.info(f"  [{i:3}/{len(pending)}] {title[:65]}")
 
-                if cl and cl is not QUOTA_EXHAUSTED:
+                provider_down = cl is QUOTA_EXHAUSTED or cl is PROVIDER_UNAVAILABLE
+
+                if cl and not provider_down:
                     classified_count  += 1
                     consecutive_fails  = 0
                     states_str = json.dumps(cl.get("states", []))
@@ -496,7 +514,18 @@ def classify_articles() -> tuple:
                         "Mentions_Specific_DC"    : str(cl.get("mentions_specific_dc", False)),
                         "Article_Text"            : article.get("article_text", "")[:2000],
                     })
+                elif provider_down:
+                    # Provider unavailable, not the article. Leave 'pending' so the
+                    # row is picked up again on a later run rather than stranded at
+                    # 'failed' (which classify never retries). Heals after any outage.
+                    consecutive_fails += 1
+                    log.warning("         …  Provider unavailable — left pending, will retry")
+                    if consecutive_fails >= MAX_CONSECUTIVE:
+                        log.error(f"  {MAX_CONSECUTIVE} consecutive provider failures — likely down. Stopping.")
+                        stop = True
+                        break
                 else:
+                    # Genuine content failure — mark failed (classify does not retry these).
                     failed_count      += 1
                     consecutive_fails += 1
                     row_by_id[article_id]["classify_status"] = "failed"

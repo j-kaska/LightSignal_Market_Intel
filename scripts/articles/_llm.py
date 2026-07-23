@@ -40,9 +40,28 @@ logging.getLogger("openai").setLevel(logging.WARNING)
 logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("httpcore").setLevel(logging.WARNING)
 
-# Returned when every retry failed with a rate-limit/billing error. Compared with
-# `is`, so it must be this one shared object — do not redefine it per module.
-QUOTA_EXHAUSTED = object()
+# Sentinels for the two failure modes callers must treat differently from a
+# content failure. Both mean "the provider, not the article, is the problem, so
+# leave the row retryable and do NOT spend its give-up budget" — an outage of any
+# length then self-heals when the provider returns. Compared with `is`, so each
+# must be this one shared object — do not redefine per module.
+#   QUOTA_EXHAUSTED     — every attempt was a rate-limit/billing error. Also the
+#                         trigger for the Gemini→Anthropic mid-run fallback.
+#   PROVIDER_UNAVAILABLE — every attempt failed on transient infra (timeouts,
+#                         5xx, connection resets, or a mix with rate-limits) but
+#                         it was not pure quota, so it does not force a fallback.
+# A plain None return is reserved for a genuine content failure (see below): the
+# model was reachable but the request/response could not be used. Only None
+# spends the attempt budget.
+QUOTA_EXHAUSTED      = object()
+PROVIDER_UNAVAILABLE = object()
+
+# HTTP statuses that indicate the request itself is unprocessable (bad/oversized
+# content), not a transient outage. These count as content failures so a single
+# poisoned article eventually gives up instead of retrying twice a day forever.
+# Auth failures (401/403) are deliberately excluded — they affect every row and
+# should heal once credentials are fixed, not strand rows as permanently failed.
+PERMANENT_REQUEST_STATUS = {400, 413, 422}
 
 # ── SSL bypass (corporate network) ───────────────────────────────────────────
 # Pool sized for LLM_MAX_WORKERS so concurrent calls don't queue on connections.
@@ -136,15 +155,25 @@ def call_with_retries(
     `parse` is applied to the (fence-stripped) response text; pass json.loads for
     structured stages. A parse failure is retried like a transient error.
 
-    Returns the parsed result, None if every attempt failed for a non-quota
-    reason, or QUOTA_EXHAUSTED if every attempt hit a rate-limit/billing error.
+    Return contract (see the sentinel definitions above for how callers must
+    treat each):
+      • parsed result        — success
+      • QUOTA_EXHAUSTED      — every attempt was a rate-limit/billing error
+      • PROVIDER_UNAVAILABLE — every attempt was transient infra, not pure quota
+      • None                 — a content failure occurred (unparseable response,
+                               or a permanent 4xx on the request itself)
+    Only None spends the caller's give-up budget; the two provider sentinels leave
+    the row retryable so an outage of any length heals when the provider returns.
     """
     rate_limit_count = 0
+    saw_content_failure = False
     for attempt in range(attempts):
         try:
             raw = strip_code_fence(call(client, system_prompt, user_content, max_tokens, provider))
             return parse(raw) if parse else raw
         except json.JSONDecodeError as e:
+            # Model was reachable but the response is unusable — a content failure.
+            saw_content_failure = True
             log.warning(f"    {label}: JSON parse error (attempt {attempt + 1}): {e}")
             time.sleep(5)
         except Exception as e:
@@ -157,10 +186,21 @@ def call_with_retries(
                 # so keep the stage-level backoff short.
                 wait = 2 * (attempt + 1)    # 2 / 4 / 6s
                 log.info(f"    {label}: transient HTTP error (attempt {attempt + 1}): retrying in {wait}s")
+            elif getattr(e, "status_code", None) in PERMANENT_REQUEST_STATUS:
+                # The request itself is unprocessable (bad/oversized content) —
+                # a content failure that should eventually give up, not an outage.
+                saw_content_failure = True
+                wait = 5
+                log.warning(f"    {label}: unprocessable request "
+                            f"(status {getattr(e, 'status_code', '?')}, attempt {attempt + 1}): {str(e)[:80]}")
             else:
+                # Unknown errors are treated as infra, not content: better to keep
+                # retrying an ambiguous failure than to silently abandon an article.
                 wait = 10 * (attempt + 1)
                 log.warning(f"    {label} error (attempt {attempt + 1}): {str(e)[:80]} — waiting {wait}s")
             time.sleep(wait)
+    if saw_content_failure:
+        return None
     if rate_limit_count == attempts:
         return QUOTA_EXHAUSTED
-    return None
+    return PROVIDER_UNAVAILABLE

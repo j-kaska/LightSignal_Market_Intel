@@ -21,6 +21,23 @@ def load_staging(path: Path) -> list:
         return list(csv.DictReader(f))
 
 
+def staged_on_or_after(rows: list, since: str) -> list:
+    """
+    Keep only rows whose staged_at date is on or after `since` (ISO YYYY-MM-DD).
+
+    Scopes the two LLM stages to a recent window. Without it, every run also
+    re-attempts the long tail of old failed summaries and old un-classified
+    rows — 1,200+ articles dating back to March as of 2026-07-23 — which buries
+    the day's real work.
+
+    Rows with a missing or short staged_at are kept: dropping work because a
+    timestamp is malformed would lose articles silently.
+    """
+    if not since:
+        return rows
+    return [r for r in rows if ((r.get("staged_at") or "")[:10] or since) >= since]
+
+
 def save_staging(path: Path, rows: list) -> None:
     """
     Write all rows back to a staging CSV.

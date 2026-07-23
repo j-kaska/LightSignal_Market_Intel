@@ -32,8 +32,11 @@ SCRIPT_DIR = Path(__file__).parent
 ROOT       = SCRIPT_DIR.parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from articles._llm import QUOTA_EXHAUSTED, call_with_retries, make_client as _make_client
-from articles._staging import load_staging, save_staging
+from articles._llm import (
+    QUOTA_EXHAUSTED, PROVIDER_UNAVAILABLE,
+    call_with_retries, make_client as _make_client,
+)
+from articles._staging import load_staging, save_staging, staged_on_or_after
 from utils.config import (
     FILE_STAGED, API_PROVIDER,
     LLM_MAX_WORKERS, SUMMARIZE_MAX_ATTEMPTS,
@@ -80,14 +83,21 @@ def summarize_article(client, title: str, text: str, provider=None):
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 
-def summarize_articles() -> tuple:
+def summarize_articles(since: str = "") -> tuple:
     """
     Summarize all pending articles in the staging file.
+
+    `since` (ISO YYYY-MM-DD) restricts the run to articles staged on or after
+    that date; older rows keep their status and are picked up by a later
+    unscoped run.
+
     Returns (success_count, failed_count).
     """
     log.info("=" * 60)
     log.info("  Stage 3: Summarize Articles")
     log.info(f"  Provider: {API_PROVIDER}")
+    if since:
+        log.info(f"  Scope: articles staged on or after {since}")
 
     # Failed rows are retried automatically until they hit SUMMARIZE_MAX_ATTEMPTS.
     # The env var forces a retry of everything, ignoring the attempt cap.
@@ -120,16 +130,22 @@ def summarize_articles() -> tuple:
         if r.get("summarize_attempts") is None:
             r["summarize_attempts"] = "0"
 
-    pending = [
-        r for r in rows
-        if _eligible(r)
-        and r.get("extraction_status") in ("success", "fallback")
-        and (r.get("article_text") or r.get("rss_description"))
-    ]
+    def _ready(r) -> bool:
+        return (
+            _eligible(r)
+            and r.get("extraction_status") in ("success", "fallback")
+            and (r.get("article_text") or r.get("rss_description"))
+        )
 
+    eligible = [r for r in rows if _ready(r)]
+    pending  = [r for r in staged_on_or_after(rows, since) if _ready(r)]
+
+    deferred = len(eligible) - len(pending)
     retrying = sum(1 for r in pending if r.get("summarize_status") == "failed")
     log.info(f"  Pending summarization: {len(pending)}"
              + (f"  ({retrying} retries of earlier failures)" if retrying else ""))
+    if deferred:
+        log.info(f"  Deferred by --since: {deferred} older articles left for a later run")
 
     if not pending:
         log.info("  Nothing to summarize.")
@@ -191,13 +207,28 @@ def summarize_articles() -> tuple:
                 article_id = article["article_id"]
                 log.info(f"  [{i:3}/{len(pending)}] {article.get('title', '')[:65]}")
 
-                if summary and summary is not QUOTA_EXHAUSTED:
+                provider_down = summary is QUOTA_EXHAUSTED or summary is PROVIDER_UNAVAILABLE
+
+                if summary and not provider_down:
                     row_by_id[article_id]["summary_ai"]       = summary
                     row_by_id[article_id]["summarize_status"] = "success"
                     log.info(f"         ✓  {summary[:80]}...")
                     success_count    += 1
                     consecutive_fails = 0
+                elif provider_down:
+                    # The provider was unavailable, not the article. Leave the row
+                    # 'pending' and spend no attempt, so it retries on a later run
+                    # no matter how long the outage lasts. The circuit breaker
+                    # below still stops this run once the provider looks down.
+                    row_by_id[article_id]["summarize_status"] = "pending"
+                    log.warning("         …  Provider unavailable — left pending, will retry (no attempt used)")
+                    consecutive_fails += 1
+                    if consecutive_fails >= MAX_CONSECUTIVE:
+                        log.error(f"  {MAX_CONSECUTIVE} consecutive provider failures — likely down. Stopping.")
+                        stop = True
+                        break
                 else:
+                    # Genuine content failure — spend an attempt and give up at the cap.
                     attempts = _attempts(row_by_id[article_id]) + 1
                     row_by_id[article_id]["summarize_status"]   = "failed"
                     row_by_id[article_id]["summarize_attempts"] = str(attempts)

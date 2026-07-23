@@ -326,16 +326,27 @@ def dedup_articles() -> tuple:
         dup_of_id = ""
         dup_layer = ""
 
+        # Both title layers must skip this article's own cache entry, exactly as
+        # Layer 2 does via exclude_id. An article that a previous run added to
+        # title_cache but left extraction_status="pending" — which is what an
+        # interrupted run leaves behind — is re-checked here on the next run and
+        # matches itself. It was then marked a duplicate of its own ID, never
+        # extracted or summarized, and written to news_feed.csv as an empty row.
+        # That silently dropped 329 real articles between 2026-07-21 and 07-23.
+
         # Layer 1a: exact title match (fastest — catches same-article-different-feed)
-        if normalized in title_cache:
+        cached_exact = title_cache.get(normalized)
+        if cached_exact and cached_exact.get("id") != article_id:
             is_dup    = True
-            dup_of_id = title_cache[normalized].get("id", "")
+            dup_of_id = cached_exact.get("id", "")
             dup_layer = "title_exact"
             fuzzy_count += 1
 
         # Layer 1b: fuzzy title match (catches minor wording variants)
         if not is_dup:
             for cached_norm, cached in title_cache.items():
+                if cached.get("id") == article_id:
+                    continue
                 score = fuzz.token_sort_ratio(normalized, cached_norm)
                 if score >= TITLE_DEDUP_THRESHOLD:
                     is_dup    = True
@@ -501,8 +512,16 @@ def dedup_clean_urls() -> int:
         title         = article.get("title", "")
         canonical_url = _normalize_clean_url(clean_url)
 
-        if canonical_url and canonical_url in seen_clean:
-            dup_of_id = seen_clean[canonical_url].get("id", "")
+        cached = seen_clean.get(canonical_url) if canonical_url else None
+        # Skip the article's own cache entry — same self-match guard as the title
+        # layers in dedup_articles(). Re-extracting an article that a prior run
+        # already cached (any recovery or re-run) would otherwise flag it as a
+        # duplicate of its own ID and write an empty stub to news_feed.csv.
+        if cached and cached.get("id") == article_id:
+            cached = None
+
+        if cached:
+            dup_of_id = cached.get("id", "")
             log.info(f"  ⚠  CLEAN URL DUP  {title[:65]}")
             log.info(f"         of: {dup_of_id}")
             row_by_id[article_id]["summarize_status"] = "skipped"
