@@ -57,6 +57,7 @@ from utils.config import (
     ART_FIELD_DC_ID, ART_FIELD_DUPLICATE,
     STATE_CENTROIDS,
 )
+from utils.dates import parse_feed_date
 
 # ── Logging ───────────────────────────────────────────────────────────────────
 logging.basicConfig(
@@ -97,27 +98,16 @@ def parse_json_list(value: str) -> list:
     return parts
 
 
-def parse_date(value: str):
+def parse_date(value):
     """
-    Parses a date string into a datetime object for sorting.
+    Parses a PublishedDate cell into a datetime object for sorting.
     Returns None on failure (these will sort to the bottom).
-    Handles formats like '1/26/2026 7:08 PM'.
+
+    Delegates to utils.dates so the newsletter and this transform agree on
+    which cells are readable — including the Excel serials a manual scrub
+    leaves behind.
     """
-    if not value or not isinstance(value, str):
-        return None
-    formats = [
-        "%m/%d/%Y %I:%M %p",
-        "%m/%d/%Y %H:%M",
-        "%m/%d/%Y",
-        "%Y-%m-%d %H:%M:%S",
-        "%Y-%m-%d",
-    ]
-    for fmt in formats:
-        try:
-            return datetime.strptime(value.strip(), fmt)
-        except ValueError:
-            continue
-    return None
+    return parse_feed_date(value)
 
 
 def build_state_centroids_csv():

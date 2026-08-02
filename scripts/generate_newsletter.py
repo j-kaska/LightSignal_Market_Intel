@@ -49,6 +49,7 @@ from utils.config import (
     DC_FIELD_STATE,
     DC_FIELD_ESTIMATED_MW,
 )
+from utils.dates import parse_feed_dates
 
 logging.basicConfig(
     level=logging.INFO,
@@ -90,12 +91,18 @@ def load_articles(end_date: datetime) -> pd.DataFrame:
     if dup_col in df.columns:
         df = df[df[dup_col].astype(str).str.upper() != "TRUE"].copy()
 
-    # Parse dates. New feeds may mix 24h and AM/PM formats (e.g. 1/26/2026 19:08 and 06/08/2026 05:33 PM).
-    # Use mixed-format parsing when available, with fallback for older pandas.
-    try:
-      df[ART_FIELD_DATE] = pd.to_datetime(df[ART_FIELD_DATE], errors="coerce", format="mixed")
-    except TypeError:
-      df[ART_FIELD_DATE] = pd.to_datetime(df[ART_FIELD_DATE], errors="coerce")
+    # Parse dates. The feed mixes the pipeline's AM/PM format with whatever
+    # Excel wrote back after a manual scrub — 24h strings and raw date serials.
+    df[ART_FIELD_DATE] = parse_feed_dates(df[ART_FIELD_DATE])
+
+    # Never drop rows silently: an unparseable date removes a story from the
+    # newsletter with no other trace, which is how a full week once went missing.
+    unparseable = int(df[ART_FIELD_DATE].isna().sum())
+    if unparseable:
+        log.warning(
+            f"  {unparseable} article(s) have an unparseable {ART_FIELD_DATE} "
+            f"and are excluded from the newsletter — inspect {FILE_ARTICLES}"
+        )
     df = df.dropna(subset=[ART_FIELD_DATE])
 
     # Filter to 7-day window (end_date inclusive, normalized to midnight)

@@ -44,6 +44,7 @@ from utils.config import (
     DC_STATUS_LAND_BANK, DC_STATUS_UNKNOWN, DC_STATUS_CLOSED,
     OUTPUT_NEWSLETTERS_DIR,
 )
+from utils.dates import parse_feed_dates
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s  [%(levelname)s]  %(message)s", datefmt="%H:%M:%S")
 log = logging.getLogger(__name__)
@@ -322,7 +323,10 @@ def load_articles_state():
     
     # Sort by published_date descending (most recent first)
     if 'published_date' in df.columns:
-        df['published_date'] = pd.to_datetime(df['published_date'], errors='coerce')
+        # The feed's date formats are mixed once it has been scrubbed in Excel;
+        # a bare to_datetime infers one format and NaTs the rest, which quietly
+        # scrambles "5 most recent" below.
+        df['published_date'] = parse_feed_dates(df['published_date'])
         df = df.sort_values('published_date', ascending=False)
     
     # Group by state and collect article data (up to 5 most recent)
