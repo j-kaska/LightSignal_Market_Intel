@@ -47,10 +47,10 @@ from utils.config import FILE_STAGED, BLOCKED_SOURCE_DOMAINS
 log = logging.getLogger(__name__)
 
 # ── Settings ──────────────────────────────────────────────────────────────────
-PAGE_LOAD_TIMEOUT   = 15      # seconds to wait for page load
-TEXT_WAIT_TIMEOUT   = 8       # seconds to wait for body text to appear
+PAGE_LOAD_TIMEOUT   = 10      # seconds to wait for page load
+TEXT_WAIT_TIMEOUT   = 5       # seconds to wait for body text to appear
 DELAY_BETWEEN       = 1.5     # seconds between articles (be polite)
-MAX_RETRIES         = 1       # retries per article before marking failed
+MAX_RETRIES         = 0       # retries per article before marking failed
 MAX_CONSECUTIVE_FAILS = 3     # restart browser after this many consecutive failures
 RESTART_EVERY       = 30      # proactively restart browser every N articles to avoid stale sessions
 MIN_TEXT_LENGTH     = 200     # minimum chars to consider extraction successful
@@ -102,6 +102,7 @@ def is_driver_dead(exc: Exception) -> bool:
 def make_driver() -> webdriver.Chrome:
     """Create a headless Chrome WebDriver with enhanced stability."""
     opts = Options()
+    opts.page_load_strategy = "eager"
     opts.add_argument("--headless=new")
     opts.add_argument("--no-sandbox")
     opts.add_argument("--disable-dev-shm-usage")
@@ -135,6 +136,20 @@ def make_driver() -> webdriver.Chrome:
     # wait every miss blocks for the full duration, which cost ~60s per article
     # (measured) for zero extra text. Explicit waits below cover the real need.
     return driver
+
+
+def stop_driver(driver: webdriver.Chrome) -> None:
+    """Shut down ChromeDriver aggressively so recovery does not stall on dead sessions."""
+    try:
+        service_proc = getattr(getattr(driver, "service", None), "process", None)
+        if service_proc is not None and service_proc.poll() is None:
+            service_proc.kill()
+    except BaseException:
+        pass
+    try:
+        driver.quit()
+    except BaseException:
+        pass
 
 
 # ── Text extraction ───────────────────────────────────────────────────────────
@@ -248,10 +263,7 @@ def extract_articles() -> tuple:
 
     def restart_driver(old_driver):
         """Quit the old driver (ignoring errors) and return a fresh one."""
-        try:
-            old_driver.quit()
-        except BaseException:
-            pass
+        stop_driver(old_driver)
         log.warning("  Restarting Chrome...")
         new = make_driver()
         log.warning("  Chrome restarted.")
@@ -366,10 +378,7 @@ def extract_articles() -> tuple:
             time.sleep(DELAY_BETWEEN)
 
     finally:
-        try:
-            driver.quit()
-        except BaseException:
-            pass
+        stop_driver(driver)
         log.info("  Chrome closed.")
 
     # Write updates back to staging file
