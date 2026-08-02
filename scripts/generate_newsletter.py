@@ -136,9 +136,13 @@ def load_dc_lookup() -> dict:
         asset_id = str(row.get(DC_FIELD_ID, "")).strip()
         if not asset_id:
             continue
+        # estimated_mw arrives with thousands separators ("1,200.0") for the
+        # largest sites, so a bare float() throws and the biggest data centers
+        # were the ones rendering as "—". transform_dc.parse_numeric strips the
+        # commas the same way.
         mw = row.get(DC_FIELD_ESTIMATED_MW, None)
         try:
-            mw_val = f"{float(mw):,.0f} MW" if pd.notna(mw) else "—"
+            mw_val = f"{float(str(mw).replace(',', '').strip()):,.0f} MW" if pd.notna(mw) else "—"
         except (ValueError, TypeError):
             mw_val = "—"
         lookup[asset_id] = {
