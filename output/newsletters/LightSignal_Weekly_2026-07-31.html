@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:mso="urn:schemas-microsoft-com:office:office" xmlns:msdt="uuid:C2F41010-65B3-11d1-A29F-00AA00C14882">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LightSignal — Jul 25 – Jul 31, 2026</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #0d0d1a;
+    color: #ddd;
+    font-family: "Segoe UI", Arial, sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  /* ── Header ── */
+  .nl-header {
+    background: linear-gradient(135deg, #0d0d1a 0%, #13132a 60%, #0d0d1a 100%);
+    border-bottom: 1px solid #252540;
+    padding: 0;
+  }
+  .header-inner {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 32px 24px 28px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+  .logo-block {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex: 1;
+  }
+  .logo-text-group {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+  .logo-name {
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    color: #E0FF00;
+    line-height: 1;
+    text-transform: uppercase;
+  }
+  .logo-sub {
+    font-size: 11px;
+    letter-spacing: 2.5px;
+    color: #888;
+    text-transform: uppercase;
+    font-weight: 500;
+  }
+  .header-right {
+    text-align: right;
+  }
+  .date-range {
+    font-size: 15px;
+    font-weight: 600;
+    color: #ccc;
+    letter-spacing: 0.3px;
+  }
+  .date-label {
+    font-size: 10px;
+    color: #555;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-bottom: 2px;
+  }
+
+  /* ── Layout ── */
+  .nl-body {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 40px 24px 60px;
+    display: flex;
+    flex-direction: column;
+    gap: 56px;
+  }
+
+  /* ── Section ── */
+  .nl-section {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .section-header {
+    border-left: 3px solid #E0FF00;
+    padding-left: 14px;
+    margin-bottom: 4px;
+  }
+  .section-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: #E0FF00;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  .section-subtitle {
+    font-size: 11px;
+    color: #555;
+    margin-top: 3px;
+    letter-spacing: 0.3px;
+  }
+
+  /* ── Story Cards ── */
+  .story-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .story-card {
+    background: #161628;
+    border: 1px solid #252540;
+    border-radius: 8px;
+    padding: 18px 20px 14px;
+    transition: border-color 0.15s;
+  }
+  .story-card:hover {
+    border-color: #3a3a5a;
+  }
+  .card-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+  }
+  .rank {
+    font-size: 13px;
+    font-weight: 700;
+    color: #E0FF00;
+    min-width: 28px;
+    flex-shrink: 0;
+  }
+  .card-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    flex-wrap: wrap;
+  }
+  .pub-date {
+    font-size: 11px;
+    color: #555;
+    white-space: nowrap;
+  }
+  .score-pill {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+    background: #1a1a10;
+    border: 1px solid #E0FF0044;
+    border-radius: 20px;
+    padding: 2px 10px;
+    flex-shrink: 0;
+  }
+  .score-label {
+    font-size: 10px;
+    color: #888;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  .score-value {
+    font-size: 14px;
+    font-weight: 700;
+    color: #E0FF00;
+    line-height: 1;
+  }
+  .score-max {
+    font-size: 10px;
+    color: #888;
+    font-weight: 400;
+  }
+  .cat-badge {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.4px;
+    padding: 2px 9px;
+    border-radius: 10px;
+    border: 1px solid transparent;
+    white-space: nowrap;
+    text-transform: uppercase;
+  }
+  .story-title {
+    display: block;
+    font-size: 15px;
+    font-weight: 600;
+    color: #ccc;
+    text-decoration: none;
+    line-height: 1.4;
+    margin-bottom: 8px;
+    transition: color 0.15s;
+  }
+  .story-title:hover {
+    color: #E0FF00;
+  }
+  .story-summary {
+    font-size: 13px;
+    color: #888;
+    line-height: 1.65;
+    margin-bottom: 10px;
+  }
+  .card-footer {
+    display: flex;
+    align-items: center;
+    padding-top: 8px;
+    border-top: 1px solid #1e1e30;
+  }
+  .score-breakdown {
+    font-size: 11px;
+    color: #444;
+    letter-spacing: 0.2px;
+  }
+
+  /* ── DC Mini List ── */
+  .dc-list {
+    background: #0f0f20;
+    border: 1px solid #1e1e35;
+    border-radius: 6px;
+    margin-top: 12px;
+    overflow: hidden;
+  }
+  .dc-row {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    padding: 7px 14px;
+    border-bottom: 1px solid #1a1a30;
+  }
+  .dc-row:last-child {
+    border-bottom: none;
+  }
+  .dc-row::before {
+    content: "⬡";
+    color: #E0FF00;
+    font-size: 10px;
+    flex-shrink: 0;
+    opacity: 0.7;
+  }
+  .dc-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: #bbb;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 260px;
+  }
+  .dc-meta {
+    font-size: 11px;
+    color: #555;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* ── Empty state ── */
+  .empty-notice {
+    color: #444;
+    font-style: italic;
+    padding: 20px 0;
+  }
+
+  /* ── Footer ── */
+  .nl-footer {
+    border-top: 1px solid #1a1a2e;
+    margin-top: 20px;
+  }
+  .footer-inner {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 20px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+  .footer-brand {
+    font-size: 11px;
+    font-weight: 600;
+    color: #E0FF00;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    opacity: 0.6;
+  }
+  .footer-meta {
+    font-size: 10px;
+    color: #333;
+    text-align: right;
+  }
+
+  @media (max-width: 640px) {
+    .header-inner { flex-direction: column; align-items: flex-start; }
+    .header-right { text-align: left; }
+    .dc-row { flex-direction: column; gap: 2px; }
+    .dc-meta { white-space: normal; }
+  }
+</style>
+
+<!--[if gte mso 9]><xml>
+<mso:CustomDocumentProperties>
+<mso:_ApprovalStatus msdt:dt="string">0</mso:_ApprovalStatus>
+<mso:_ApprovalAssignedTo msdt:dt="string"></mso:_ApprovalAssignedTo>
+<mso:_ApprovalRespondedBy msdt:dt="string"></mso:_ApprovalRespondedBy>
+<mso:_ApprovalSentBy msdt:dt="string"></mso:_ApprovalSentBy>
+</mso:CustomDocumentProperties>
+</xml><![endif]-->
+</head>
+<body>
+
+<header class="nl-header">
+  <div class="header-inner">
+    <div class="logo-block">
+      <svg width="28" height="32" viewBox="0 0 28 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <polygon points="14,1 26,8 26,24 14,31 2,24 2,8" fill="none" stroke="#E0FF00" stroke-width="2"/>
+      <polygon points="14,7 21,11 21,21 14,25 7,21 7,11" fill="#E0FF00" fill-opacity="0.15" stroke="#E0FF00" stroke-width="1"/>
+    </svg>
+      <div class="logo-text-group">
+        <span class="logo-name">LightSignal</span>
+        <span class="logo-sub">Lightpath Market Intel</span>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="date-label">Week of</div>
+      <div class="date-range">Jul 25 – Jul 31, 2026</div>
+    </div>
+  </div>
+</header>
+
+<main class="nl-body">
+  
+  <section class="nl-section">
+    <div class="section-header">
+      <h2 class="section-title">Top Data Center Stories</h2>
+      <p class="section-subtitle">DC-tagged stories scoring ≥ 7/10 from the past 7 days</p>
+    </div>
+    <div class="story-list">
+      
+    <div class="story-card">
+      <div class="card-header">
+        <span class="rank">#1</span>
+        <div class="card-meta">
+          <span class="cat-badge" style="background:#1a2a3a;border-color:#3498DB;color:#5dade2">Data Center Development</span>
+          <span class="pub-date">Jul 28, 2026</span>
+        </div>
+        <div class="score-pill">
+          <span class="score-label">Score</span>
+          <span class="score-value">10<span class="score-max">/10</span></span>
+        </div>
+      </div>
+      <a href="nan" target="_blank" rel="noopener" class="story-title">Meta, BlackRock Plan to Invest in $14 Billion Data Center - Bloomberg.com</a>
+      <p class="story-summary">Meta Platforms Inc. and BlackRock Inc. are forming a joint venture to invest in a 1-gigawatt data center complex in Texas. This new venture will build and operate the facility, marking a significant expansion in data center infrastructure for both companies. The total investment for this project is reported to be $14 billion.</p>
+      <div class="card-footer">
+        <span class="score-breakdown">Strategy: 5/5 &nbsp;&middot;&nbsp; Relevance: 5/5</span>
+      </div>
+      <div class="dc-list"><div class="dc-row"><span class="dc-name">DC-13418</span><span class="dc-meta">Details unavailable</span></div></div>
+    </div>
+    <div class="story-card">
+      <div class="card-header">
+        <span class="rank">#2</span>
+        <div class="card-meta">
+          <span class="cat-badge" style="background:#1a2a3a;border-color:#3498DB;color:#5dade2">Data Center Development</span>
+          <span class="pub-date">Jul 27, 2026</span>
+        </div>
+        <div class="score-pill">
+          <span class="score-label">Score</span>
+          <span class="score-value">10<span class="score-max">/10</span></span>
+        </div>
+      </div>
+      <a href="https://www.govconwire.com/articles/nvidia-openai-250b-guarantee-ohio-data-center" target="_blank" rel="noopener" class="story-title">NVIDIA Eyes $250B Guarantee for OpenAI Lease at Federally Owned Ohio Data Center</a>
+      <p class="story-summary">NVIDIA is in discussions to provide a $250 billion guarantee to facilitate OpenAI's lease of a data center campus on federally owned land in southern Ohio. This guarantee would back construction debt and the lease itself, as OpenAI lacks an investment-grade credit rating. The data center campus, potentially costing over $500 billion, is slated to consume up to 10 gigawatts of power, with the first phase delivering 800 megawatts in 2028.</p>
+      <div class="card-footer">
+        <span class="score-breakdown">Strategy: 5/5 &nbsp;&middot;&nbsp; Relevance: 5/5</span>
+      </div>
+      <div class="dc-list"><div class="dc-row"><span class="dc-name">SB Energy / New Day</span><span class="dc-meta">SoftBank &middot; Piketon, OH &middot; 9 MW</span></div></div>
+    </div>
+    <div class="story-card">
+      <div class="card-header">
+        <span class="rank">#3</span>
+        <div class="card-meta">
+          <span class="cat-badge" style="background:#1a2a3a;border-color:#3498DB;color:#5dade2">Data Center Development</span>
+          <span class="pub-date">Jul 31, 2026</span>
+        </div>
+        <div class="score-pill">
+          <span class="score-label">Score</span>
+          <span class="score-value">9<span class="score-max">/10</span></span>
+        </div>
+      </div>
+      <a href="https://www.inquirer.com/news/pennsylvania/east-whiteland-data-center-project-20260730.html" target="_blank" rel="noopener" class="story-title">East Whiteland officials allow work to resume on data center planned for Superfund site</a>
+      <p class="story-summary">Work has resumed on a proposed 1.5 million-square-foot data center in East Whiteland, Pennsylvania, after township officials issued a permit for earth-moving activities. The permit includes conditions for soil monitoring, dust control, and protection of a nearby Superfund site. Developers Green Fig LLC and Sentinel Data Centers are proceeding with development, though final construction permits are still required.</p>
+      <div class="card-footer">
+        <span class="score-breakdown">Strategy: 4/5 &nbsp;&middot;&nbsp; Relevance: 5/5</span>
+      </div>
+      <div class="dc-list"><div class="dc-row"><span class="dc-name">Chester County</span><span class="dc-meta">fifteenfortyseven &middot; East Whiteland Township, PA &middot; 150 MW</span></div></div>
+    </div>
+    <div class="story-card">
+      <div class="card-header">
+        <span class="rank">#4</span>
+        <div class="card-meta">
+          <span class="cat-badge" style="background:#1a2a3a;border-color:#3498DB;color:#5dade2">Data Center Development</span>
+          <span class="pub-date">Jul 29, 2026</span>
+        </div>
+        <div class="score-pill">
+          <span class="score-label">Score</span>
+          <span class="score-value">9<span class="score-max">/10</span></span>
+        </div>
+      </div>
+      <a href="https://www.wfmz.com/news/area/lehighvalley/northampton-county/slate-belt/nearly-two-dozen-data-center-buildings-filing-gives-glimpse-of-possible-development-in-rural-northampton/article_bf18ffc7-f5be-4148-9c94-9d62d9f2d91c.html" target="_blank" rel="noopener" class="story-title">Nearly 2 dozen data center buildings? Filing gives glimpse of possible development in rural ...</a>
+      <p class="story-summary">Slate Belt Holdings LLC, a joint venture including Talen Energy, has outlined plans for a 754-acre data center campus in Upper Mount Bethel Township, Pennsylvania. The conceptual rendering includes 23 data center buildings, each 201,500 square feet, along with an administrative building and substations. This development is progressing despite a validity challenge filed by Slate Belt Holdings LLC concerning zoning standards, which has led the township to update its text amendment for data center regulations.</p>
+      <div class="card-footer">
+        <span class="score-breakdown">Strategy: 4/5 &nbsp;&middot;&nbsp; Relevance: 5/5</span>
+      </div>
+      <div class="dc-list"><div class="dc-row"><span class="dc-name">DC-13425</span><span class="dc-meta">Details unavailable</span></div></div>
+    </div>
+    <div class="story-card">
+      <div class="card-header">
+        <span class="rank">#5</span>
+        <div class="card-meta">
+          <span class="cat-badge" style="background:#1a2a3a;border-color:#3498DB;color:#5dade2">Data Center Development</span>
+          <span class="pub-date">Jul 30, 2026</span>
+        </div>
+        <div class="score-pill">
+          <span class="score-label">Score</span>
+          <span class="score-value">8<span class="score-max">/10</span></span>
+        </div>
+      </div>
+      <a href="https://www.loudounnow.com/news/amazon-files-data-center-site-plan-at-george-washington-campus/article_8b0ed8e3-c5ef-4e7e-9ae4-a5f2d35ff7df.html" target="_blank" rel="noopener" class="story-title">Amazon Files Data Center Site Plan at George Washington Campus | News - Loudoun Now</a>
+      <p class="story-summary">Amazon Data Services has filed a site plan for data centers on a 120-acre property in Ashburn, Virginia, previously purchased from George Washington University for $427 million. The initial plans detail four two-story buildings spanning 800,000 square feet. Local opposition to the data center development has been voiced.</p>
+      <div class="card-footer">
+        <span class="score-breakdown">Strategy: 4/5 &nbsp;&middot;&nbsp; Relevance: 4/5</span>
+      </div>
+      <div class="dc-list"><div class="dc-row"><span class="dc-name">GWU Virginia Science & Technology Campus</span><span class="dc-meta">Amazon &middot; Ashburn, VA &middot; 205 MW</span></div></div>
+    </div>
+    <div class="story-card">
+      <div class="card-header">
+        <span class="rank">#6</span>
+        <div class="card-meta">
+          <span class="cat-badge" style="background:#1a2a3a;border-color:#3498DB;color:#5dade2">Data Center Development</span>
+          <span class="pub-date">Jul 30, 2026</span>
+        </div>
+        <div class="score-pill">
+          <span class="score-label">Score</span>
+          <span class="score-value">8<span class="score-max">/10</span></span>
+        </div>
+      </div>
+      <a href="https://www.13abc.com/2026/07/29/oregon-officials-eye-vantage-data-centers-proposed-development-near-wynn-corduroy-roads/" target="_blank" rel="noopener" class="story-title">Prospective developer named for Oregon data center, petition drive looks to put project to a ...</a>
+      <p class="story-summary">Vantage Data Centers has been named the prospective developer for a proposed data center project in Oregon, Ohio. The current site plan includes three buildings, with the possibility of multiple end users per building. A community petition drive is underway to allow residents to vote on the project in the November election, while city officials begin negotiations with Vantage Data Centers.</p>
+      <div class="card-footer">
+        <span class="score-breakdown">Strategy: 3/5 &nbsp;&middot;&nbsp; Relevance: 5/5</span>
+      </div>
+      <div class="dc-list"><div class="dc-row"><span class="dc-name">Data Center Development</span><span class="dc-meta">Unknown Operator &middot; Oregon, OH &middot; 34 MW</span></div></div>
+    </div>
+    <div class="story-card">
+      <div class="card-header">
+        <span class="rank">#7</span>
+        <div class="card-meta">
+          <span class="cat-badge" style="background:#2e2010;border-color:#E67E22;color:#e67e22">Regulatory & Community Pushback</span>
+          <span class="pub-date">Jul 27, 2026</span>
+        </div>
+        <div class="score-pill">
+          <span class="score-label">Score</span>
+          <span class="score-value">8<span class="score-max">/10</span></span>
+        </div>
+      </div>
+      <a href="https://virginiamercury.com/2026/07/27/goochland-residents-rebuff-data-center-developer-tract-ahead-of-permit-application/" target="_blank" rel="noopener" class="story-title">Goochland residents rebuff data center developer Tract ahead of permit application</a>
+      <p class="story-summary">Tract, a data center developer, presented plans for an 870-acre, 900-megawatt development in Goochland, Virginia. Residents expressed opposition to the project, citing concerns about noise pollution, diesel generators, transmission lines, and water usage. The proposed Tuckahoe Technology Park development is already the subject of a lawsuit and requires zoning changes.</p>
+      <div class="card-footer">
+        <span class="score-breakdown">Strategy: 4/5 &nbsp;&middot;&nbsp; Relevance: 4/5</span>
+      </div>
+      <div class="dc-list"><div class="dc-row"><span class="dc-name">DC-13416</span><span class="dc-meta">Details unavailable</span></div></div>
+    </div>
+    <div class="story-card">
+      <div class="card-header">
+        <span class="rank">#8</span>
+        <div class="card-meta">
+          <span class="cat-badge" style="background:#2e2010;border-color:#E67E22;color:#e67e22">Regulatory & Community Pushback</span>
+          <span class="pub-date">Jul 27, 2026</span>
+        </div>
+        <div class="score-pill">
+          <span class="score-label">Score</span>
+          <span class="score-value">8<span class="score-max">/10</span></span>
+        </div>
+      </div>
+      <a href="https://www.insidernj.com/ai-data-center-sparks-sussex-collision/" target="_blank" rel="noopener" class="story-title">AI Data Center Sparks Sussex Collision - Insider NJ</a>
+      <p class="story-summary">National Land Developers LLC is suing Andover Township, New Jersey, after the township committee reversed its decision to allow a proposed data center on an 812-acre parcel. The committee had initially moved to approve the project and update development standards but rescinded the ordinance five days later, effectively banning data centers. The township mayor stated they have funding in place to defend the ban in court.</p>
+      <div class="card-footer">
+        <span class="score-breakdown">Strategy: 3/5 &nbsp;&middot;&nbsp; Relevance: 5/5</span>
+      </div>
+      <div class="dc-list"><div class="dc-row"><span class="dc-name">DC-13414</span><span class="dc-meta">Details unavailable</span></div></div>
+    </div>
+    <div class="story-card">
+      <div class="card-header">
+        <span class="rank">#9</span>
+        <div class="card-meta">
+          <span class="cat-badge" style="background:#1a2a3a;border-color:#3498DB;color:#5dade2">Data Center Development</span>
+          <span class="pub-date">Jul 29, 2026</span>
+        </div>
+        <div class="score-pill">
+          <span class="score-label">Score</span>
+          <span class="score-value">8<span class="score-max">/10</span></span>
+        </div>
+      </div>
+      <a href="https://www.prnewswire.com/news-releases/flexential-to-build-new-dallas-area-data-center-campus-on-110-acres-in-kaufman-county-302836104.html" target="_blank" rel="noopener" class="story-title">Flexential to Build New Dallas-Area Data Center Campus on 110 Acres in Kaufman County</a>
+      <p class="story-summary">Flexential has acquired 110 acres in Kaufman County, Texas, to develop a new data center campus southeast of Dallas. The campus has the potential to support 108 MW across three buildings, with the first phase targeting 36 MW for colocation and enterprise workloads. Site work is slated to begin in early 2027, with initial customer availability expected in late 2028.</p>
+      <div class="card-footer">
+        <span class="score-breakdown">Strategy: 4/5 &nbsp;&middot;&nbsp; Relevance: 4/5</span>
+      </div>
+      <div class="dc-list"><div class="dc-row"><span class="dc-name">DC-13431</span><span class="dc-meta">Details unavailable</span></div></div>
+    </div>
+    <div class="story-card">
+      <div class="card-header">
+        <span class="rank">#10</span>
+        <div class="card-meta">
+          <span class="cat-badge" style="background:#1a2a3a;border-color:#3498DB;color:#5dade2">Data Center Development</span>
+          <span class="pub-date">Jul 27, 2026</span>
+        </div>
+        <div class="score-pill">
+          <span class="score-label">Score</span>
+          <span class="score-value">8<span class="score-max">/10</span></span>
+        </div>
+      </div>
+      <a href="https://finance.yahoo.com/energy/articles/energy-vault-breaks-ground-powered-130000888.html" target="_blank" rel="noopener" class="story-title">Energy Vault Breaks Ground on Powered AI Infrastructure Campus in Snyder, Texas to ...</a>
+      <p class="story-summary">Energy Vault has broken ground on an AI infrastructure campus in Snyder, Texas, with an initial 8MW deployment of modular data centers for Crusoe Cloud. This first phase is expected to be operational in Q1 2027 and is expandable to 25MW, with the overall site designed for up to 500MW. The project involves site preparation, fiber installation, and power infrastructure to support Crusoe's Spark modular data center platform.</p>
+      <div class="card-footer">
+        <span class="score-breakdown">Strategy: 4/5 &nbsp;&middot;&nbsp; Relevance: 4/5</span>
+      </div>
+      <div class="dc-list"><div class="dc-row"><span class="dc-name">DC-13420</span><span class="dc-meta">Details unavailable</span></div></div>
+    </div>
+    </div>
+  </section>
+  
+  <section class="nl-section">
+    <div class="section-header">
+      <h2 class="section-title">All Other Stories</h2>
+      <p class="section-subtitle">Remaining stories scoring ≥ 7/10 this week, excluding those shown above</p>
+    </div>
+    <div class="story-list">
+      
+    <div class="story-card">
+      <div class="card-header">
+        <span class="rank">#1</span>
+        <div class="card-meta">
+          <span class="cat-badge" style="background:#1a2a3a;border-color:#3498DB;color:#5dade2">Data Center Development</span>
+          <span class="pub-date">Jul 29, 2026</span>
+        </div>
+        <div class="score-pill">
+          <span class="score-label">Score</span>
+          <span class="score-value">9<span class="score-max">/10</span></span>
+        </div>
+      </div>
+      <a href="https://lancasteronline.com/news/local/rejected-bid-for-columbias-mcginness-property-included-3-proposed-data-center-buildings/article_aa6d3298-c594-4c1a-a1da-ce8d1c65ff88.html" target="_blank" rel="noopener" class="story-title">Rejected bid for Columbia's McGinness property included 3 proposed data center buildings</a>
+      <p class="story-summary">A $6.35 million bid by Saadia Holding LLC for the McGinness Innovation Park in Columbia was rejected by the Borough Council. The proposal included plans for three data center buildings, each up to 233,000 square feet, with an estimated buildout cost of $87.5 million to $90 million. The bid was rejected due to a failure to guarantee payment within 60 days, and the council later voted to support an ordinance prohibiting new data centers in the property's zone.</p>
+      <div class="card-footer">
+        <span class="score-breakdown">Strategy: 4/5 &nbsp;&middot;&nbsp; Relevance: 5/5</span>
+      </div>
+      
+    </div>
+    <div class="story-card">
+      <div class="card-header">
+        <span class="rank">#2</span>
+        <div class="card-meta">
+          <span class="cat-badge" style="background:#2e2010;border-color:#E67E22;color:#e67e22">Regulatory & Community Pushback</span>
+          <span class="pub-date">Jul 29, 2026</span>
+        </div>
+        <div class="score-pill">
+          <span class="score-label">Score</span>
+          <span class="score-value">9<span class="score-max">/10</span></span>
+        </div>
+      </div>
+      <a href="https://www.crainscleveland.com/politics-policy/ccl-data-center-working-groups-20260728/" target="_blank" rel="noopener" class="story-title">After Cleveland hit pause on new data centers, these groups will decide what happens next</a>
+      <p class="story-summary">Cleveland City Council has imposed a three-month moratorium on new data center development. During this period, city officials and community stakeholders will determine the future regulatory framework for data centers. This pause follows concerns regarding the potential impact of data center construction and operation on the city.</p>
+      <div class="card-footer">
+        <span class="score-breakdown">Strategy: 4/5 &nbsp;&middot;&nbsp; Relevance: 5/5</span>
+      </div>
+      
+    </div>
+    <div class="story-card">
+      <div class="card-header">
+        <span class="rank">#3</span>
+        <div class="card-meta">
+          <span class="cat-badge" style="background:#2e1a1a;border-color:#E74C3C;color:#e74c3c">Power & Utilities</span>
+          <span class="pub-date">Jul 30, 2026</span>
+        </div>
+        <div class="score-pill">
+          <span class="score-label">Score</span>
+          <span class="score-value">9<span class="score-max">/10</span></span>
+        </div>
+      </div>
+      <a href="https://www.nbc4i.com/news/local-news/central-ohio-news/datacenters/new-albany-gets-small-electric-grid-to-power-new-data-center/" target="_blank" rel="noopener" class="story-title">New Albany gets small electric grid to power new data center | NBC4 WCMH-TV</a>
+      <p class="story-summary">Veolia will operate a 350-megawatt grid in New Albany, Ohio, to exclusively power a new AI data center campus. This independent grid utilizes on-site generation and battery storage, avoiding strain on Ohio's existing power infrastructure and lengthy connection wait times. The project is expected to create 35 to 40 full-time jobs.</p>
+      <div class="card-footer">
+        <span class="score-breakdown">Strategy: 4/5 &nbsp;&middot;&nbsp; Relevance: 5/5</span>
+      </div>
+      
+    </div>
+    <div class="story-card">
+      <div class="card-header">
+        <span class="rank">#4</span>
+        <div class="card-meta">
+          <span class="cat-badge" style="background:#1a2a3a;border-color:#3498DB;color:#5dade2">Data Center Development</span>
+          <span class="pub-date">Jul 31, 2026</span>
+        </div>
+        <div class="score-pill">
+          <span class="score-label">Score</span>
+          <span class="score-value">9<span class="score-max">/10</span></span>
+        </div>
+      </div>
+      <a href="https://www.ans.org/news/article-8261/privatesector-data-center-plans-advance-for-paducah-and-savannah-river-sites/" target="_blank" rel="noopener" class="story-title">Private-sector data center plans advance for Paducah and Savannah River sites</a>
+      <p class="story-summary">The Department of Energy is advancing private-sector data center developments at the Paducah Gaseous Diffusion Plant in Kentucky and the Savannah River Site in South Carolina. At Paducah, NextEra Energy will develop 2 GW of natural gas generation and 2.6 GW of battery storage to support a 1.8 GW AI data center campus, with Brookfield developing the campus and over $100 billion in private investment. The Savannah River Site project involves Amentum negotiating a lease for a 1 GW data center with approximately 2 GW of on-site generation, transitioning from natural gas to nuclear energy.</p>
+      <div class="card-footer">
+        <span class="score-breakdown">Strategy: 5/5 &nbsp;&middot;&nbsp; Relevance: 4/5</span>
+      </div>
+      
+    </div>
+    <div class="story-card">
+      <div class="card-header">
+        <span class="rank">#5</span>
+        <div class="card-meta">
+          <span class="cat-badge" style="background:#1a2a3a;border-color:#3498DB;color:#5dade2">Data Center Development</span>
+          <span class="pub-date">Jul 31, 2026</span>
+        </div>
+        <div class="score-pill">
+          <span class="score-label">Score</span>
+          <span class="score-value">9<span class="score-max">/10</span></span>
+        </div>
+      </div>
+      <a href="https://www.publicpower.org/periodical/article/us-data-center-developers-shift-focus-existing-pipelines-new-capacity-additions-slow-q1-2026-report" target="_blank" rel="noopener" class="story-title">U.S. Data Center Developers Shift Focus to Existing Pipelines as New Capacity Additions ...</a>
+      <p class="story-summary">In Q1 2026, U.S. data center pipeline additions fell 19% to 36 GW, as established developers prioritize existing projects due to regulatory challenges. Texas leads with nearly 100 GW of planned capacity, though a significant portion of new development, particularly from new entrants, remains in early stages. Total disclosed data center capacity in the U.S. now stands at 331 GW, with 40% actively under development.</p>
+      <div class="card-footer">
+        <span class="score-breakdown">Strategy: 5/5 &nbsp;&middot;&nbsp; Relevance: 4/5</span>
+      </div>
+      
+    </div>
+    <div class="story-card">
+      <div class="card-header">
+        <span class="rank">#6</span>
+        <div class="card-meta">
+          <span class="cat-badge" style="background:#2e2010;border-color:#E67E22;color:#e67e22">Regulatory & Community Pushback</span>
+          <span class="pub-date">Jul 28, 2026</span>
+        </div>
+        <div class="score-pill">
+          <span class="score-label">Score</span>
+          <span class="score-value">8<span class="score-max">/10</span></span>
+        </div>
+      </div>
+      <a href="https://www.cbsnews.com/pittsburgh/news/hanover-township-washington-county-data-center/" target="_blank" rel="noopener" class="story-title">Residents wage 11th-hour fight over proposed data center in rural Washington County community</a>
+      <p class="story-summary">Residents in Hanover Township, Washington County, are opposing a proposed data center campus that includes eight buildings and a natural gas power plant. The Texas-based Prime Data Centers plans to build on a 126-acre site, but community members cite concerns about noise, pollution, and quality of life. Despite local opposition, the project meets zoning requirements and has a data center ordinance in place, awaiting final council approval.</p>
+      <div class="card-footer">
+        <span class="score-breakdown">Strategy: 3/5 &nbsp;&middot;&nbsp; Relevance: 5/5</span>
+      </div>
+      
+    </div>
+    <div class="story-card">
+      <div class="card-header">
+        <span class="rank">#7</span>
+        <div class="card-meta">
+          <span class="cat-badge" style="background:#1a2a3a;border-color:#3498DB;color:#5dade2">Data Center Development</span>
+          <span class="pub-date">Jul 29, 2026</span>
+        </div>
+        <div class="score-pill">
+          <span class="score-label">Score</span>
+          <span class="score-value">8<span class="score-max">/10</span></span>
+        </div>
+      </div>
+      <a href="https://www.mcall.com/2026/07/28/project-atlas-data-center-discussion-bumped-from-south-whitehall-meeting-heres-why-and-the-new-date/" target="_blank" rel="noopener" class="story-title">Project Atlas data center meeting delayed in South Whitehall Township - The Morning Call</a>
+      <p class="story-summary">Edged US's proposed $8.9 million Project Atlas data center in South Whitehall Township has had its planning commission discussion delayed. The proposal for 1.56 million square feet of data center, administrative, and warehouse space, planned for a 410-acre tract, faces resident opposition citing health and environmental concerns. The meeting has been rescheduled to September 23rd.</p>
+      <div class="card-footer">
+        <span class="score-breakdown">Strategy: 3/5 &nbsp;&middot;&nbsp; Relevance: 5/5</span>
+      </div>
+      
+    </div>
+    <div class="story-card">
+      <div class="card-header">
+        <span class="rank">#8</span>
+        <div class="card-meta">
+          <span class="cat-badge" style="background:#1a2a3a;border-color:#3498DB;color:#5dade2">Data Center Development</span>
+          <span class="pub-date">Jul 30, 2026</span>
+        </div>
+        <div class="score-pill">
+          <span class="score-label">Score</span>
+          <span class="score-value">8<span class="score-max">/10</span></span>
+        </div>
+      </div>
+      <a href="https://www.fox4news.com/news/dallas-market-hall-could-be-demolished-data-center-project" target="_blank" rel="noopener" class="story-title">Dallas Market Hall could be demolished for data center project</a>
+      <p class="story-summary">Crow Holdings and CleanArc Data Centers are planning a 245-megawatt data center campus in Dallas on a 40-acre site. Zoning records indicate this project may involve the demolition of the Dallas Market Hall. Dallas Market Center has ceased booking future events at the hall as it evaluates redevelopment options for the space. The first 70 megawatts of the data center are expected to be operational by late 2027.</p>
+      <div class="card-footer">
+        <span class="score-breakdown">Strategy: 4/5 &nbsp;&middot;&nbsp; Relevance: 4/5</span>
+      </div>
+      
+    </div>
+    <div class="story-card">
+      <div class="card-header">
+        <span class="rank">#9</span>
+        <div class="card-meta">
+          <span class="cat-badge" style="background:#2e2010;border-color:#E67E22;color:#e67e22">Regulatory & Community Pushback</span>
+          <span class="pub-date">Jul 30, 2026</span>
+        </div>
+        <div class="score-pill">
+          <span class="score-label">Score</span>
+          <span class="score-value">8<span class="score-max">/10</span></span>
+        </div>
+      </div>
+      <a href="https://fox8.com/news/everyone-is-concerned-residents-speak-out-against-proposed-data-center-in-amherst/" target="_blank" rel="noopener" class="story-title">'Everyone is concerned': Residents speak out against proposed data center in Amherst</a>
+      <p class="story-summary">Residents in Amherst, Ohio, voiced strong opposition to a proposed 45-megawatt data center at the former Nordson Corporation site. Concerns raised included energy consumption, noise, light pollution, and environmental impact, with some residents stating the facility would use more power than the entire city. Cervenka Development Partners is seeking a use variance, but the project requires further approvals after a zoning board of appeals decision.</p>
+      <div class="card-footer">
+        <span class="score-breakdown">Strategy: 3/5 &nbsp;&middot;&nbsp; Relevance: 5/5</span>
+      </div>
+      
+    </div>
+    <div class="story-card">
+      <div class="card-header">
+        <span class="rank">#10</span>
+        <div class="card-meta">
+          <span class="cat-badge" style="background:#1a2a3a;border-color:#3498DB;color:#5dade2">Data Center Development</span>
+          <span class="pub-date">Jul 30, 2026</span>
+        </div>
+        <div class="score-pill">
+          <span class="score-label">Score</span>
+          <span class="score-value">8<span class="score-max">/10</span></span>
+        </div>
+      </div>
+      <a href="https://www.dispatch.com/story/business/manufacturing/2026/07/30/elion-to-build-flint-grid-battery-energy-storage-near-new-albany/91092570007/?gnt-cfr=1&gca-cat=p&gca-uir=false&gca-epti=z11xx47p116150l004450c116150e1175xxv11xx47&gca-ft=8&gca-ds=sophi" target="_blank" rel="noopener" class="story-title">Elion to build Flint Grid battery energy storage near New Albany - The Columbus Dispatch</a>
+      <p class="story-summary">Eolian has begun construction on its Flint Grid project, a 200-megawatt battery energy storage system in Licking County, Ohio. This multi-hundred-million-dollar facility is being built adjacent to data centers in the New Albany area to meet demand in the region. The project is a five-plus-hour duration grid-scale battery energy storage system.</p>
+      <div class="card-footer">
+        <span class="score-breakdown">Strategy: 3/5 &nbsp;&middot;&nbsp; Relevance: 5/5</span>
+      </div>
+      
+    </div>
+    </div>
+  </section>
+</main>
+
+<footer class="nl-footer">
+  <div class="footer-inner">
+    <span class="footer-brand">LightSignal</span>
+    <span class="footer-meta">Generated August 02, 2026 at 05:30 PM &nbsp;&middot;&nbsp; Lightpath Strategic Intelligence</span>
+  </div>
+</footer>
+
+</body>
+</html>
