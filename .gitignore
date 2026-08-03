@@ -41,8 +41,18 @@ output/audit/*
 !output/audit/metrics_history.jsonl
 
 # ── Generated: dashboard build output ─────────────────────────────────────────
-# Rebuilt by run_all.py on every run; index.html alone is ~13 MB per commit.
-output/latest/
+# Rebuilt by run_all.py on every run. GitHub Pages publishes the dashboard
+# straight out of this repo, so the four files the site actually serves are
+# tracked on purpose — while they were ignored, a rebuild changed nothing git
+# could see and the live site silently stayed on an old build.
+# Cost is ~17 MB per rebuild, most of it data.js.
+output/latest/*
+!output/latest/LightSignal/
+!output/latest/LightSignal_DC.kmz
+output/latest/LightSignal/*
+!output/latest/LightSignal/index.html
+!output/latest/LightSignal/data.js
+!output/latest/LightSignal/lib.js
 output/archive/
 scripts/kml/deckgl_bundle.js
 
