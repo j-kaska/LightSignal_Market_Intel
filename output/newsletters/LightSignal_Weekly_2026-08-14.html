@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:mso="urn:schemas-microsoft-com:office:office" xmlns:msdt="uuid:C2F41010-65B3-11d1-A29F-00AA00C14882">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LightSignal — Aug 8 – Aug 14, 2026</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #0d0d1a;
+    color: #ddd;
+    font-family: "Segoe UI", Arial, sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  /* ── Header ── */
+  .nl-header {
+    background: linear-gradient(135deg, #0d0d1a 0%, #13132a 60%, #0d0d1a 100%);
+    border-bottom: 1px solid #252540;
+    padding: 0;
+  }
+  .header-inner {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 32px 24px 28px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+  .logo-block {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex: 1;
+  }
+  .logo-text-group {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+  .logo-name {
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    color: #E0FF00;
+    line-height: 1;
+    text-transform: uppercase;
+  }
+  .logo-sub {
+    font-size: 11px;
+    letter-spacing: 2.5px;
+    color: #888;
+    text-transform: uppercase;
+    font-weight: 500;
+  }
+  .header-right {
+    text-align: right;
+  }
+  .date-range {
+    font-size: 15px;
+    font-weight: 600;
+    color: #ccc;
+    letter-spacing: 0.3px;
+  }
+  .date-label {
+    font-size: 10px;
+    color: #555;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-bottom: 2px;
+  }
+
+  /* ── Layout ── */
+  .nl-body {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 40px 24px 60px;
+    display: flex;
+    flex-direction: column;
+    gap: 56px;
+  }
+
+  /* ── Section ── */
+  .nl-section {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .section-header {
+    border-left: 3px solid #E0FF00;
+    padding-left: 14px;
+    margin-bottom: 4px;
+  }
+  .section-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: #E0FF00;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  .section-subtitle {
+    font-size: 11px;
+    color: #555;
+    margin-top: 3px;
+    letter-spacing: 0.3px;
+  }
+
+  /* ── Story Cards ── */
+  .story-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .story-card {
+    background: #161628;
+    border: 1px solid #252540;
+    border-radius: 8px;
+    padding: 18px 20px 14px;
+    transition: border-color 0.15s;
+  }
+  .story-card:hover {
+    border-color: #3a3a5a;
+  }
+  .card-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+  }
+  .rank {
+    font-size: 13px;
+    font-weight: 700;
+    color: #E0FF00;
+    min-width: 28px;
+    flex-shrink: 0;
+  }
+  .card-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    flex-wrap: wrap;
+  }
+  .pub-date {
+    font-size: 11px;
+    color: #555;
+    white-space: nowrap;
+  }
+  .score-pill {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+    background: #1a1a10;
+    border: 1px solid #E0FF0044;
+    border-radius: 20px;
+    padding: 2px 10px;
+    flex-shrink: 0;
+  }
+  .score-label {
+    font-size: 10px;
+    color: #888;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  .score-value {
+    font-size: 14px;
+    font-weight: 700;
+    color: #E0FF00;
+    line-height: 1;
+  }
+  .score-max {
+    font-size: 10px;
+    color: #888;
+    font-weight: 400;
+  }
+  .cat-badge {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.4px;
+    padding: 2px 9px;
+    border-radius: 10px;
+    border: 1px solid transparent;
+    white-space: nowrap;
+    text-transform: uppercase;
+  }
+  .story-title {
+    display: block;
+    font-size: 15px;
+    font-weight: 600;
+    color: #ccc;
+    text-decoration: none;
+    line-height: 1.4;
+    margin-bottom: 8px;
+    transition: color 0.15s;
+  }
+  .story-title:hover {
+    color: #E0FF00;
+  }
+  .story-summary {
+    font-size: 13px;
+    color: #888;
+    line-height: 1.65;
+    margin-bottom: 10px;
+  }
+  .card-footer {
+    display: flex;
+    align-items: center;
+    padding-top: 8px;
+    border-top: 1px solid #1e1e30;
+  }
+  .score-breakdown {
+    font-size: 11px;
+    color: #444;
+    letter-spacing: 0.2px;
+  }
+
+  /* ── DC Mini List ── */
+  .dc-list {
+    background: #0f0f20;
+    border: 1px solid #1e1e35;
+    border-radius: 6px;
+    margin-top: 12px;
+    overflow: hidden;
+  }
+  .dc-row {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    padding: 7px 14px;
+    border-bottom: 1px solid #1a1a30;
+  }
+  .dc-row:last-child {
+    border-bottom: none;
+  }
+  .dc-row::before {
+    content: "⬡";
+    color: #E0FF00;
+    font-size: 10px;
+    flex-shrink: 0;
+    opacity: 0.7;
+  }
+  .dc-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: #bbb;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 260px;
+  }
+  .dc-meta {
+    font-size: 11px;
+    color: #555;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* ── Empty state ── */
+  .empty-notice {
+    color: #444;
+    font-style: italic;
+    padding: 20px 0;
+  }
+
+  /* ── Footer ── */
+  .nl-footer {
+    border-top: 1px solid #1a1a2e;
+    margin-top: 20px;
+  }
+  .footer-inner {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 20px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+  .footer-brand {
+    font-size: 11px;
+    font-weight: 600;
+    color: #E0FF00;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    opacity: 0.6;
+  }
+  .footer-meta {
+    font-size: 10px;
+    color: #333;
+    text-align: right;
+  }
+
+  @media (max-width: 640px) {
+    .header-inner { flex-direction: column; align-items: flex-start; }
+    .header-right { text-align: left; }
+    .dc-row { flex-direction: column; gap: 2px; }
+    .dc-meta { white-space: normal; }
+  }
+</style>
+
+<!--[if gte mso 9]><xml>
+<mso:CustomDocumentProperties>
+<mso:_ApprovalStatus msdt:dt="string">0</mso:_ApprovalStatus>
+<mso:_ApprovalAssignedTo msdt:dt="string"></mso:_ApprovalAssignedTo>
+<mso:_ApprovalRespondedBy msdt:dt="string"></mso:_ApprovalRespondedBy>
+</mso:CustomDocumentProperties>
+</xml><![endif]-->
+</head>
+<body>
+
+<header class="nl-header">
+  <div class="header-inner">
+    <div class="logo-block">
+      <svg width="28" height="32" viewBox="0 0 28 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <polygon points="14,1 26,8 26,24 14,31 2,24 2,8" fill="none" stroke="#E0FF00" stroke-width="2"/>
+      <polygon points="14,7 21,11 21,21 14,25 7,21 7,11" fill="#E0FF00" fill-opacity="0.15" stroke="#E0FF00" stroke-width="1"/>
+    </svg>
+      <div class="logo-text-group">
+        <span class="logo-name">LightSignal</span>
+        <span class="logo-sub">Lightpath Market Intel</span>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="date-label">Week of</div>
+      <div class="date-range">Aug 8 – Aug 14, 2026</div>
+    </div>
+  </div>
+</header>
+
+<main class="nl-body">
+  
+  <section class="nl-section">
+    <div class="section-header">
+      <h2 class="section-title">Top Data Center Stories</h2>
+      <p class="section-subtitle">DC-tagged stories scoring ≥ 7/10 from the past 7 days</p>
+    </div>
+    <div class="story-list">
+      
+    <div class="story-card">
+      <div class="card-header">
+        <span class="rank">#1</span>
+        <div class="card-meta">
+          <span class="cat-badge" style="background:#1a2a3a;border-color:#3498DB;color:#5dade2">Data Center Development</span>
+          <span class="pub-date">Aug 11, 2026</span>
+        </div>
+        <div class="score-pill">
+          <span class="score-label">Score</span>
+          <span class="score-value">9<span class="score-max">/10</span></span>
+        </div>
+      </div>
+      <a href="https://abc7amarillo.com/news/local/fermi-america-signs-six-point-five-billion-dollar-lease-for-worlds-largest-data-center-after-months-of-turmoil-tensorwave-amarillo-texas-carson-county-water-city-council-greg-abbott-audir" target="_blank" rel="noopener" class="story-title">Fermi signs $6.5 billion lease for 'world's largest data center' after months of turmoil - KVII</a>
+      <p class="story-summary">Fermi has signed a $6.5 billion, 15-year lease with AI cloud provider TensorWave for a portion of its Project Matador data center campus in Carson County, Texas. This initial lease secures 222 megawatts of power and could house tens of thousands of AMD GPUs for AI systems. TensorWave has the option to expand into two additional data centers, increasing the partnership to over 650 megawatts.</p>
+      <div class="card-footer">
+        <span class="score-breakdown">Strategy: 5/5 &nbsp;&middot;&nbsp; Relevance: 4/5</span>
+      </div>
+      <div class="dc-list"><div class="dc-row"><span class="dc-name">Hypergrid: Fermi America</span><span class="dc-meta">Fermi America and Texas Tech &middot; Amarillo, TX &middot; 1,102 MW</span></div></div>
+    </div>
+    <div class="story-card">
+      <div class="card-header">
+        <span class="rank">#2</span>
+        <div class="card-meta">
+          <span class="cat-badge" style="background:#2e2010;border-color:#E67E22;color:#e67e22">Regulatory & Community Pushback</span>
+          <span class="pub-date">Aug 13, 2026</span>
+        </div>
+        <div class="score-pill">
+          <span class="score-label">Score</span>
+          <span class="score-value">9<span class="score-max">/10</span></span>
+        </div>
+      </div>
+      <a href="https://hntrbrk.com/breaking-news/vineland" target="_blank" rel="noopener" class="story-title">Nebius Said Vineland "On Track" Days After Stop-Work Orders - Hunterbrook Media</a>
+      <p class="story-summary">The City of Vineland issued stop-construction orders to DataOne Vineland, LLC, regarding unpermitted installation of an LNG tank and Bloom Energy fuel cells at a Nebius data center. Nebius is relying on these fuel cells for the approximately 300-megawatt site, which Microsoft has contracted. DataOne stated they do not expect the pause to affect the construction and delivery timeline.</p>
+      <div class="card-footer">
+        <span class="score-breakdown">Strategy: 4/5 &nbsp;&middot;&nbsp; Relevance: 5/5</span>
+      </div>
+      <div class="dc-list"><div class="dc-row"><span class="dc-name">Nebius Data Center</span><span class="dc-meta">Nebius &middot; Vineland, NJ &middot; 300 MW</span></div></div>
+    </div>
+    <div class="story-card">
+      <div class="card-header">
+        <span class="rank">#3</span>
+        <div class="card-meta">
+          <span class="cat-badge" style="background:#2e2010;border-color:#E67E22;color:#e67e22">Regulatory & Community Pushback</span>
+          <span class="pub-date">Aug 13, 2026</span>
+        </div>
+        <div class="score-pill">
+          <span class="score-label">Score</span>
+          <span class="score-value">9<span class="score-max">/10</span></span>
+        </div>
+      </div>
+      <a href="https://www.nj.com/business/2026/08/this-quiet-town-is-now-ground-zero-in-one-of-njs-fiercest-ai-data-center-battles.html" target="_blank" rel="noopener" class="story-title">This quiet town is now ground zero in one of N.J.'s fiercest AI data center battles</a>
+      <p class="story-summary">E. Kahn Development is suing Montgomery Township, New Jersey, over a new ordinance banning data centers. The developer alleges the ban is politically motivated and seeks over $300 million in damages, claiming it diminishes the value of their 257-acre former Johnson & Johnson campus. EKD argues that data centers are the property's "highest and best use" and that concerns about infrastructure could be addressed with regulations, not a complete prohibition.</p>
+      <div class="card-footer">
+        <span class="score-breakdown">Strategy: 4/5 &nbsp;&middot;&nbsp; Relevance: 5/5</span>
+      </div>
+      <div class="dc-list"><div class="dc-row"><span class="dc-name">EKD</span><span class="dc-meta">E. Kahn Development Corp &middot; Skillman, NJ &middot; 196 MW</span></div></div>
+    </div>
+    <div class="story-card">
+      <div class="card-header">
+        <span class="rank">#4</span>
+        <div class="card-meta">
+          <span class="cat-badge" style="background:#1a2a3a;border-color:#3498DB;color:#5dade2">Data Center Development</span>
+          <span class="pub-date">Aug 12, 2026</span>
+        </div>
+        <div class="score-pill">
+          <span class="score-label">Score</span>
+          <span class="score-value">9<span class="score-max">/10</span></span>
+        </div>
+      </div>
+      <a href="https://www.nbc4i.com/news/local-news/central-ohio-news/datacenters/fairfield-county-data-center-draws-skepticism-alternative-utility-plans/" target="_blank" rel="noopener" class="story-title">Fairfield County data center draws skepticism, alternative utility plans | NBC4 WCMH-TV</a>
+      <p class="story-summary">Vantage Data Centers is constructing a $2.1 billion data center campus in Fairfield County, Ohio, spanning 350 acres. The facility will include four data centers and is expected to create 50 full-time jobs and 2,500 construction jobs. Vantage is also developing an on-site natural gas power plant with Advanced Power, pending regulatory approval.</p>
+      <div class="card-footer">
+        <span class="score-breakdown">Strategy: 4/5 &nbsp;&middot;&nbsp; Relevance: 5/5</span>
+      </div>
+      <div class="dc-list"><div class="dc-row"><span class="dc-name">Vantage data center - Millersport</span><span class="dc-meta">Vantage &middot; Millersport, OH &middot; 800 MW</span></div></div>
+    </div>
+    <div class="story-card">
+      <div class="card-header">
+        <span class="rank">#5</span>
+        <div class="card-meta">
+          <span class="cat-badge" style="background:#1a2a3a;border-color:#3498DB;color:#5dade2">Data Center Development</span>
+          <span class="pub-date">Aug 12, 2026</span>
+        </div>
+        <div class="score-pill">
+          <span class="score-label">Score</span>
+          <span class="score-value">8<span class="score-max">/10</span></span>
+        </div>
+      </div>
+      <a href="https://www.theguardian.com/us-news/2026/aug/12/datacenter-everglades-risk" target="_blank" rel="noopener" class="story-title">Heat, algae and AI: proposed datacenter could damage Everglades, experts warn</a>
+      <p class="story-summary">A proposed 600 MW hyperscale datacenter, known as Project Tango, is planned for a 202-acre site in western Palm Beach County, Florida, near the Everglades. Environmentalists are concerned that waste heat from the facility could increase water temperatures, potentially exacerbating toxic algae blooms in the surrounding watershed. The project's substantial electricity demand also raises concerns about its impact on the delicate ecosystem, which has undergone significant restoration efforts.</p>
+      <div class="card-footer">
+        <span class="score-breakdown">Strategy: 3/5 &nbsp;&middot;&nbsp; Relevance: 5/5</span>
+      </div>
+      <div class="dc-list"><div class="dc-row"><span class="dc-name">Project Tango</span><span class="dc-meta">nan &middot; Loxahatchee, FL &middot; 226 MW</span></div></div>
+    </div>
+    <div class="story-card">
+      <div class="card-header">
+        <span class="rank">#6</span>
+        <div class="card-meta">
+          <span class="cat-badge" style="background:#1a2a3a;border-color:#3498DB;color:#5dade2">Data Center Development</span>
+          <span class="pub-date">Aug 10, 2026</span>
+        </div>
+        <div class="score-pill">
+          <span class="score-label">Score</span>
+          <span class="score-value">8<span class="score-max">/10</span></span>
+        </div>
+      </div>
+      <a href="https://www.kxxv.com/news/local-news/in-your-neighborhood/bell-county/temple/rowan-digital-infrastructure-pursues-final-planned-data-center-in-temple-amid-community-opposition" target="_blank" rel="noopener" class="story-title">Rowan Digital Infrastructure pursues final planned data center in Temple - KXXV</a>
+      <p class="story-summary">Rowan Digital Infrastructure is seeking approval for a sixth and final data center, the Lasso Building, in Temple, Texas. This proposed facility represents an additional $700 million investment, bringing Rowan's total investment in Temple to at least $2.1 billion. The project is proceeding through the city's standard approval process despite community opposition.</p>
+      <div class="card-footer">
+        <span class="score-breakdown">Strategy: 4/5 &nbsp;&middot;&nbsp; Relevance: 4/5</span>
+      </div>
+      <div class="dc-list"><div class="dc-row"><span class="dc-name">Rowan data center</span><span class="dc-meta">Rowan Infrastructure &middot; Temple, TX &middot; 300 MW</span></div></div>
+    </div>
+    <div class="story-card">
+      <div class="card-header">
+        <span class="rank">#7</span>
+        <div class="card-meta">
+          <span class="cat-badge" style="background:#1a2a3a;border-color:#3498DB;color:#5dade2">Data Center Development</span>
+          <span class="pub-date">Aug 10, 2026</span>
+        </div>
+        <div class="score-pill">
+          <span class="score-label">Score</span>
+          <span class="score-value">8<span class="score-max">/10</span></span>
+        </div>
+      </div>
+      <a href="https://stocksdownunder.com/nvidia-3-billion-lancium-stargate-power/" target="_blank" rel="noopener" class="story-title">Why Is Nvidia Investing $3 Billion in a Power Company? Inside the Stargate Data Centre Bet</a>
+      <p class="story-summary">Nvidia is investing up to $3 billion in Lancium, a Texas-based power company developing the Stargate AI data center. The deal includes an initial $2 billion for a 20% stake and a potential $1 billion tied to power milestones, highlighting electricity as the current bottleneck for AI infrastructure. This investment aims to secure demand for Nvidia's AI chips by ensuring sufficient power for data centers.</p>
+      <div class="card-footer">
+        <span class="score-breakdown">Strategy: 4/5 &nbsp;&middot;&nbsp; Relevance: 4/5</span>
+      </div>
+      <div class="dc-list"><div class="dc-row"><span class="dc-name">Open AI/ SoftBank Stargate data center (Lancium Clean Campus)</span><span class="dc-meta">Open AI &middot; Abilene, TX &middot; 1,200 MW</span></div></div>
+    </div>
+    <div class="story-card">
+      <div class="card-header">
+        <span class="rank">#8</span>
+        <div class="card-meta">
+          <span class="cat-badge" style="background:#1a2a3a;border-color:#3498DB;color:#5dade2">Data Center Development</span>
+          <span class="pub-date">Aug 11, 2026</span>
+        </div>
+        <div class="score-pill">
+          <span class="score-label">Score</span>
+          <span class="score-value">8<span class="score-max">/10</span></span>
+        </div>
+      </div>
+      <a href="https://www.aboutamazon.com/news/company-news/amazon-pecos-county-texas-data-center-clean-energy-jobs" target="_blank" rel="noopener" class="story-title">Amazon's statement on a planned data center campus in Pecos County, Texas</a>
+      <p class="story-summary">Amazon plans a new data center campus in Pecos County, Texas, that will be powered by new on-site generation. The company is exploring solar energy and battery storage for the facility. Amazon also stated that the data center will use custom cooling technology to minimize water usage and explore beneficial use of produced water.</p>
+      <div class="card-footer">
+        <span class="score-breakdown">Strategy: 4/5 &nbsp;&middot;&nbsp; Relevance: 4/5</span>
+      </div>
+      <div class="dc-list"><div class="dc-row"><span class="dc-name">Project Horizon</span><span class="dc-meta">Poolside &middot; Fort Stockton, TX &middot; 2,000 MW</span></div></div>
+    </div>
+    <div class="story-card">
+      <div class="card-header">
+        <span class="rank">#9</span>
+        <div class="card-meta">
+          <span class="cat-badge" style="background:#1a2a3a;border-color:#3498DB;color:#5dade2">Data Center Development</span>
+          <span class="pub-date">Aug 14, 2026</span>
+        </div>
+        <div class="score-pill">
+          <span class="score-label">Score</span>
+          <span class="score-value">8<span class="score-max">/10</span></span>
+        </div>
+      </div>
+      <a href="nan" target="_blank" rel="noopener" class="story-title">Rick Perry's Fermi Finally Finds a Customer for Its Giant Texas AI Power Bet - WSJ</a>
+      <p class="story-summary">Fermi, a data center and power startup, has secured its first major customer for its planned 100-megawatt AI data center in Llano, Texas. The company signed a lease agreement with an unnamed client, marking a significant step after facing financial and development challenges. This deal is crucial for Fermi's ambitious project to supply dedicated power for artificial intelligence computing.</p>
+      <div class="card-footer">
+        <span class="score-breakdown">Strategy: 4/5 &nbsp;&middot;&nbsp; Relevance: 4/5</span>
+      </div>
+      <div class="dc-list"><div class="dc-row"><span class="dc-name">Goodnight Campus</span><span class="dc-meta">Crusoe Energy &middot; Claude, TX &middot; 208 MW</span></div></div>
+    </div>
+    <div class="story-card">
+      <div class="card-header">
+        <span class="rank">#10</span>
+        <div class="card-meta">
+          <span class="cat-badge" style="background:#1a2a3a;border-color:#3498DB;color:#5dade2">Data Center Development</span>
+          <span class="pub-date">Aug 10, 2026</span>
+        </div>
+        <div class="score-pill">
+          <span class="score-label">Score</span>
+          <span class="score-value">7<span class="score-max">/10</span></span>
+        </div>
+      </div>
+      <a href="https://fox2now.com/news/missouri/proposed-16-billion-data-center-in-pacific-is-dead/" target="_blank" rel="noopener" class="story-title">Proposed $16 billion data center in Pacific is dead - FOX 2</a>
+      <p class="story-summary">A proposed $16 billion data center project by BLE Landholdings LLC, a subsidiary of Beltline Energy, in Pacific, Missouri, has been withdrawn. The Atlanta-based developer sought an M-1 zoning designation for a 500-acre site. This withdrawal follows the city's decision to implement a 12-month moratorium on new data center proposals to allow for a land-use study and community feedback.</p>
+      <div class="card-footer">
+        <span class="score-breakdown">Strategy: 3/5 &nbsp;&middot;&nbsp; Relevance: 4/5</span>
+      </div>
+      <div class="dc-list"><div class="dc-row"><span class="dc-name">Meramec Valley Technology Park</span><span class="dc-meta">Beltline Energy &middot; Pacific, MO &middot; 855 MW</span></div></div>
+    </div>
+    </div>
+  </section>
+  
+  <section class="nl-section">
+    <div class="section-header">
+      <h2 class="section-title">All Other Stories</h2>
+      <p class="section-subtitle">Remaining stories scoring ≥ 7/10 this week, excluding those shown above</p>
+    </div>
+    <div class="story-list">
+      
+    <div class="story-card">
+      <div class="card-header">
+        <span class="rank">#1</span>
+        <div class="card-meta">
+          <span class="cat-badge" style="background:#2e2010;border-color:#E67E22;color:#e67e22">Regulatory & Community Pushback</span>
+          <span class="pub-date">Aug 10, 2026</span>
+        </div>
+        <div class="score-pill">
+          <span class="score-label">Score</span>
+          <span class="score-value">10<span class="score-max">/10</span></span>
+        </div>
+      </div>
+      <a href="https://cbsaustin.com/news/local/trump-criticizes-abbott-moratorium-on-texas-data-centers-connecting-to-power-grid" target="_blank" rel="noopener" class="story-title">Trump criticizes Abbott moratorium on Texas data centers connecting to power grid</a>
+      <p class="story-summary">Governor Greg Abbott has implemented a moratorium on new data center connections to the Texas power grid, requiring companies to disclose electricity and water usage details due to reliability concerns. President Donald Trump criticized this move, calling it a "mistake" that could hinder economic development. The moratorium aims to manage the more than 500% increase in peak electricity demand tracked by ERCOT.</p>
+      <div class="card-footer">
+        <span class="score-breakdown">Strategy: 5/5 &nbsp;&middot;&nbsp; Relevance: 5/5</span>
+      </div>
+      
+    </div>
+    <div class="story-card">
+      <div class="card-header">
+        <span class="rank">#2</span>
+        <div class="card-meta">
+          <span class="cat-badge" style="background:#1a2a3a;border-color:#3498DB;color:#5dade2">Data Center Development</span>
+          <span class="pub-date">Aug 11, 2026</span>
+        </div>
+        <div class="score-pill">
+          <span class="score-label">Score</span>
+          <span class="score-value">9<span class="score-max">/10</span></span>
+        </div>
+      </div>
+      <a href="https://penncapital-star.com/agriculture-pa-farms/data-center-developers-want-to-build-in-three-pa-communities-each-has-its-own-experience/" target="_blank" rel="noopener" class="story-title">Data center developers want to build in three Pa. communities; each has its own experience</a>
+      <p class="story-summary">A developer has proposed building three data center buildings and associated infrastructure on 100 acres in Muncy Township, Pennsylvania. The proposed site is currently farmland near Montoursville and Williamsport. Concerns have been raised by local residents and officials regarding the lack of specific zoning regulations for data centers in the township.</p>
+      <div class="card-footer">
+        <span class="score-breakdown">Strategy: 4/5 &nbsp;&middot;&nbsp; Relevance: 5/5</span>
+      </div>
+      
+    </div>
+    <div class="story-card">
+      <div class="card-header">
+        <span class="rank">#3</span>
+        <div class="card-meta">
+          <span class="cat-badge" style="background:#2e1a1a;border-color:#E74C3C;color:#e74c3c">Power & Utilities</span>
+          <span class="pub-date">Aug 11, 2026</span>
+        </div>
+        <div class="score-pill">
+          <span class="score-label">Score</span>
+          <span class="score-value">9<span class="score-max">/10</span></span>
+        </div>
+      </div>
+      <a href="https://www.utilitydive.com/news/ppl-blackstone-joint-venture-secures-5-gw-of-gas-turbines-for-data-centers/827408/" target="_blank" rel="noopener" class="story-title">PPL-Blackstone joint venture secures 5 GW of gas turbines for data centers in Pennsylvania</a>
+      <p class="story-summary">PPL Corp.'s joint venture with Blackstone Infrastructure, Invitium Energy, has secured over 5 GW of gas turbines for data center power generation in Pennsylvania. These secured turbines represent a potential investment of up to $15 billion through 2032. Invitium is building power plants for data centers under long-term agreements, with generation expected online as early as 2031.</p>
+      <div class="card-footer">
+        <span class="score-breakdown">Strategy: 4/5 &nbsp;&middot;&nbsp; Relevance: 5/5</span>
+      </div>
+      
+    </div>
+    <div class="story-card">
+      <div class="card-header">
+        <span class="rank">#4</span>
+        <div class="card-meta">
+          <span class="cat-badge" style="background:#2e2010;border-color:#E67E22;color:#e67e22">Regulatory & Community Pushback</span>
+          <span class="pub-date">Aug 14, 2026</span>
+        </div>
+        <div class="score-pill">
+          <span class="score-label">Score</span>
+          <span class="score-value">9<span class="score-max">/10</span></span>
+        </div>
+      </div>
+      <a href="nan" target="_blank" rel="noopener" class="story-title">Lancaster County officials push for pause on data center projects - WGAL</a>
+      <p class="story-summary">Lancaster County officials are requesting a temporary halt on new data center development due to local concerns, even as three hyperscale data centers are currently under construction in the Susquehanna Valley. The proposed pause aims to allow for further study of the impact of these facilities on the county. This action highlights a growing trend of local communities evaluating the implications of large-scale data center projects.</p>
+      <div class="card-footer">
+        <span class="score-breakdown">Strategy: 4/5 &nbsp;&middot;&nbsp; Relevance: 5/5</span>
+      </div>
+      
+    </div>
+    <div class="story-card">
+      <div class="card-header">
+        <span class="rank">#5</span>
+        <div class="card-meta">
+          <span class="cat-badge" style="background:#1a2a3a;border-color:#3498DB;color:#5dade2">Data Center Development</span>
+          <span class="pub-date">Aug 12, 2026</span>
+        </div>
+        <div class="score-pill">
+          <span class="score-label">Score</span>
+          <span class="score-value">9<span class="score-max">/10</span></span>
+        </div>
+      </div>
+      <a href="https://finance.yahoo.com/technology/ai/articles/exclusive-alpha-compute-buy-pennsylvania-170027769.html" target="_blank" rel="noopener" class="story-title">Exclusive-Alpha Compute to buy Pennsylvania land, gas rights for $55 million data center ...</a>
+      <p class="story-summary">Alpha Compute is acquiring land and natural gas rights in Pennsylvania for $55 million to develop a 200-megawatt data center campus with on-site gas-fired power generation. The facility, expected to begin operations in Q3 2027, could eventually expand to one gigawatt and is driven by demand for AI computing. The project's total build-out cost, including electrical connections, is estimated at $500 million over several years.</p>
+      <div class="card-footer">
+        <span class="score-breakdown">Strategy: 4/5 &nbsp;&middot;&nbsp; Relevance: 5/5</span>
+      </div>
+      
+    </div>
+    <div class="story-card">
+      <div class="card-header">
+        <span class="rank">#6</span>
+        <div class="card-meta">
+          <span class="cat-badge" style="background:#2e2010;border-color:#E67E22;color:#e67e22">Regulatory & Community Pushback</span>
+          <span class="pub-date">Aug 10, 2026</span>
+        </div>
+        <div class="score-pill">
+          <span class="score-label">Score</span>
+          <span class="score-value">8<span class="score-max">/10</span></span>
+        </div>
+      </div>
+      <a href="https://ohiocapitaljournal.com/2026/08/10/all-candidates-for-ohio-governor-have-now-called-for-restrictions-on-data-center-boom/" target="_blank" rel="noopener" class="story-title">All candidates for Ohio governor have now called for restrictions on data center boom</a>
+      <p class="story-summary">All major candidates for Ohio governor are proposing restrictions or moratoriums on new data center development. Proposals include requirements for data centers to cover community electricity costs, pay full property taxes, prioritize brownfield development, and meet environmental standards. One candidate also suggested halting approvals via executive order until legislative action is taken.</p>
+      <div class="card-footer">
+        <span class="score-breakdown">Strategy: 3/5 &nbsp;&middot;&nbsp; Relevance: 5/5</span>
+      </div>
+      
+    </div>
+    <div class="story-card">
+      <div class="card-header">
+        <span class="rank">#7</span>
+        <div class="card-meta">
+          <span class="cat-badge" style="background:#2e2010;border-color:#E67E22;color:#e67e22">Regulatory & Community Pushback</span>
+          <span class="pub-date">Aug 11, 2026</span>
+        </div>
+        <div class="score-pill">
+          <span class="score-label">Score</span>
+          <span class="score-value">8<span class="score-max">/10</span></span>
+        </div>
+      </div>
+      <a href="https://wwmt.com/news/local/marshall-data-center-moratorium-delays-development-one-year-alterra-brooks-industrial-park-acres-wetland-lake-energy-environment-calhoun-county-west-michigan" target="_blank" rel="noopener" class="story-title">Marshall data center moratorium delays development by at least one year - WWMT</a>
+      <p class="story-summary">The Marshall City Council has approved a one-year moratorium on data center development, delaying Alterra Development's project at the Brooks Industrial Park. This action stems from resident concerns regarding electricity, water usage, and heat discharge. Alterra's revised plans now target an enterprise-class data center, reducing initial energy demand from one gigawatt.</p>
+      <div class="card-footer">
+        <span class="score-breakdown">Strategy: 4/5 &nbsp;&middot;&nbsp; Relevance: 4/5</span>
+      </div>
+      
+    </div>
+    <div class="story-card">
+      <div class="card-header">
+        <span class="rank">#8</span>
+        <div class="card-meta">
+          <span class="cat-badge" style="background:#1a2a3a;border-color:#3498DB;color:#5dade2">Data Center Development</span>
+          <span class="pub-date">Aug 11, 2026</span>
+        </div>
+        <div class="score-pill">
+          <span class="score-label">Score</span>
+          <span class="score-value">8<span class="score-max">/10</span></span>
+        </div>
+      </div>
+      <a href="https://www.inquirer.com/politics/pennsylvania/josh-shapiro-data-center-support-election-20260811.html" target="_blank" rel="noopener" class="story-title">How Josh Shapiro's early embrace of data centers is testing his high popularity in Pennsylvania</a>
+      <p class="story-summary">Governor Josh Shapiro's administration secured a $20 billion Amazon investment, including two data center campuses in Luzerne and Bucks Counties, by promising fast-tracked permitting and tax breaks. Despite this major announcement, only six data centers are currently under construction in Pennsylvania, and ten have received state-level permit approval. Shapiro's efforts to speed up data center development are now facing criticism, with some voters perceiving the administration as moving too quickly and prioritizing Big Tech.</p>
+      <div class="card-footer">
+        <span class="score-breakdown">Strategy: 3/5 &nbsp;&middot;&nbsp; Relevance: 5/5</span>
+      </div>
+      
+    </div>
+    <div class="story-card">
+      <div class="card-header">
+        <span class="rank">#9</span>
+        <div class="card-meta">
+          <span class="cat-badge" style="background:#2e2010;border-color:#E67E22;color:#e67e22">Regulatory & Community Pushback</span>
+          <span class="pub-date">Aug 11, 2026</span>
+        </div>
+        <div class="score-pill">
+          <span class="score-label">Score</span>
+          <span class="score-value">8<span class="score-max">/10</span></span>
+        </div>
+      </div>
+      <a href="https://investors.corescientific.com/news-events/press-releases/detail/141/core-scientific-supports-governor-abbotts-focus-on-responsible-data-center-infrastructure-in-texas" target="_blank" rel="noopener" class="story-title">Core Scientific Supports Governor Abbott's Focus on Responsible Data Center Infrastructure in Texas</a>
+      <p class="story-summary">Core Scientific expressed support for Texas Governor Greg Abbott's initiatives focused on responsible data center development and grid resilience. The company emphasizes collaboration with policymakers, utilities, and communities to ensure responsible growth for AI and advanced computing infrastructure. Core Scientific has operated in Texas since 2022, focusing on paying its own infrastructure costs and utilizing low-water consumption cooling technology.</p>
+      <div class="card-footer">
+        <span class="score-breakdown">Strategy: 4/5 &nbsp;&middot;&nbsp; Relevance: 4/5</span>
+      </div>
+      
+    </div>
+    <div class="story-card">
+      <div class="card-header">
+        <span class="rank">#10</span>
+        <div class="card-meta">
+          <span class="cat-badge" style="background:#261a3a;border-color:#9B59B6;color:#a569bd">Hyperscaler Strategy</span>
+          <span class="pub-date">Aug 11, 2026</span>
+        </div>
+        <div class="score-pill">
+          <span class="score-label">Score</span>
+          <span class="score-value">8<span class="score-max">/10</span></span>
+        </div>
+      </div>
+      <a href="https://www.wlky.com/article/meta-data-center-investment-indiana/73396496" target="_blank" rel="noopener" class="story-title">Indiana to receive part of Meta's $1B investment into places it has data centers - WLKY</a>
+      <p class="story-summary">Meta is investing $1 billion into communities where it operates data centers, with Indiana being a recipient. This investment follows Meta's announcement of an $800 million data center project in Jeffersonville, Indiana. The fund aims to support these communities where Meta has existing infrastructure.</p>
+      <div class="card-footer">
+        <span class="score-breakdown">Strategy: 4/5 &nbsp;&middot;&nbsp; Relevance: 4/5</span>
+      </div>
+      
+    </div>
+    </div>
+  </section>
+</main>
+
+<footer class="nl-footer">
+  <div class="footer-inner">
+    <span class="footer-brand">LightSignal</span>
+    <span class="footer-meta">Generated August 17, 2026 at 08:08 AM &nbsp;&middot;&nbsp; Lightpath Strategic Intelligence</span>
+  </div>
+</footer>
+
+</body>
+</html>
